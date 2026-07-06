@@ -262,34 +262,3 @@ def format_restroom_list(
         lines.append(f"_출처: {meta['source_agency']}_")
 
     return "\n".join(lines).strip()
-
-
-def format_dataset_info() -> str:
-    meta = load_meta()
-    if not meta:
-        return "데이터가 아직 처리되지 않았습니다. `python scripts/process_restroom_data.py`를 실행하세요."
-
-    summaries_path = DATA_DIR / "공중화장실_06_통계요약.json"
-    summaries = {}
-    if summaries_path.exists():
-        with summaries_path.open(encoding="utf-8") as f:
-            summaries = json.load(f)
-
-    lines = [
-        "## modu-emergencybell(모두의비상벨) Dataset Info",
-        f"- **총 화장실**: {meta.get('total_records', 0):,}곳",
-        f"- **원본 파일**: {meta.get('source_file', '')}",
-        f"- **출처**: {meta.get('source_agency', '')}",
-        "",
-        "### 이용자 유형별",
-    ]
-    for tag, count in summaries.get("user_type_counts", {}).items():
-        desc = meta.get("user_type_definitions", {}).get(tag, "")
-        lines.append(f"- `{tag}`: {count:,}곳 — {desc}")
-
-    lines.append("\n### 개방 시간 유형")
-    for tag, count in summaries.get("opening_type_counts", {}).items():
-        desc = meta.get("opening_type_definitions", {}).get(tag, "")
-        lines.append(f"- `{tag}`: {count:,}곳 — {desc}")
-
-    return "\n".join(lines)

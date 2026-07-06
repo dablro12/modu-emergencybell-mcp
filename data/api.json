@@ -370,7 +370,6 @@
   },
   "mvp_tool_count": {
     "core": 9,
-    "with_dataset_info": 10,
     "list": [
       "get_emergency_hotlines",
       "search_restroom",
@@ -380,18 +379,17 @@
       "find_open_pharmacy",
       "find_safety_bell",
       "get_phrase_card",
-      "get_restroom_detail",
-      "get_dataset_info"
+      "get_restroom_detail"
     ],
-    "note": "v1.3 — PlayMCP 권장 상한 10개"
+    "note": "PlayMCP 권장 3~10개. get_dataset_info 제거(서비스 비핵심)."
   },
   "mvp_apply_checklist": [
     "공공데이터포털 회원가입",
     "15000563 응급의료기관 정보 — 활용신청",
     "15000736 병·의원 찾기 — 활용신청",
     "15000576 약국 정보 — 활용신청 (v1.1)",
-    "DATA_GO_KR_SERVICE_KEY → .env",
-    "KAKAO_REST_API_KEY → .env",
-    "python scripts/process_safety_bell_data.py (v1.2 CSV→JSON)"
+    "GitHub Secrets → DATA_GO_KR_SERVICE_KEY, DATA_GO_KR_SERVICE_KEY_ENCODED, KAKAO_REST_API_KEY",
+    "GitHub Actions docker-publish → ghcr.io 이미지",
+    "PlayMCP in KC → 이미지 등록 (ghcr.io)"
   ]
 }

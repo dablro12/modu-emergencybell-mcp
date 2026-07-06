@@ -9,7 +9,6 @@ from mcp.server.fastmcp import FastMCP
 
 from helpers import (
     fetch_restrooms,
-    format_dataset_info,
     format_restroom_list,
     get_record_by_id,
     search_restrooms_by_query,
@@ -262,17 +261,6 @@ async def get_restroom_detail(record_id: str) -> str:
     if not record:
         return f"Record `{record_id}` not found."
     return format_restroom_list([{**record, "distance_m": None}])
-
-
-@mcp.tool(
-    annotations={
-        **TOOL_ANNOTATIONS,
-        "title": "Dataset Info",
-    }
-)
-async def get_dataset_info() -> str:
-    f"""Returns dataset statistics for restroom records used by {SERVICE_DISPLAY}."""
-    return format_dataset_info()
 
 
 def main() -> None:
