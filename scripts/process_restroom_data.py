@@ -14,13 +14,15 @@ sys.path.insert(0, str(ROOT))
 
 from restroom_parser import parse_record
 
-DATA_DIR = ROOT / "data"
+DATA_DIR = ROOT / "data" / "toilet_data"
 
 
 def find_source_csv() -> Path:
     files = list(DATA_DIR.glob("*.csv"))
     if not files:
-        raise FileNotFoundError(f"No CSV in {DATA_DIR}")
+        files = list((ROOT / "data").glob("**/공중화장실*.csv"))
+    if not files:
+        raise FileNotFoundError(f"No restroom CSV in {DATA_DIR}")
     return files[0]
 
 
