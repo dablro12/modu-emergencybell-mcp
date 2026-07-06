@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from kakao_local import coord_to_region, geocode_place
-from region_parse import parse_place_query
+from landmarks import lookup_landmark_coords, lookup_landmark_region
+from region_parse import normalize_place_query, parse_place_query, region_full_prefix, regions_match
 from restroom_parser import is_open_now
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "toilet_data"
@@ -18,16 +19,25 @@ META_FILE = DATA_DIR / "공중화장실_02_메타정보.json"
 
 USER_TYPE_ALIASES = {
     "wheelchair": "wheelchair",
+    "wheelchair_accessible": "wheelchair",
     "disabled": "wheelchair",
     "장애인": "wheelchair",
     "child": "child",
+    "children": "child",
     "어린이": "child",
-    "유아": "infant_care",
     "infant": "infant_care",
+    "infants": "infant_care",
     "infant_care": "infant_care",
+    "with_infants": "infant_care",
+    "with_infant": "infant_care",
+    "baby": "infant_care",
+    "diaper": "infant_care",
+    "유아": "infant_care",
     "기저귀": "infant_care",
     "elderly": "elderly_safety",
     "elderly_safety": "elderly_safety",
+    "safety_bell": "elderly_safety",
+    "emergency_bell": "elderly_safety",
     "general": "general",
 }
 
@@ -78,22 +88,22 @@ def _matches_open_now(record: dict[str, Any], open_now: bool) -> bool:
     if not open_now:
         return True
     status = is_open_now(record["opening"])
+    if status is True:
+        return True
+    if record["opening"].get("is_always_open"):
+        return True
     return status is not False
 
 
-def _region_hint_from_coords(lat: float, lng: float, region_info: dict[str, str] | None) -> str:
-    if region_info and region_info.get("region_name"):
-        return region_info["region_name"]
-    return ""
-
-
-def _matches_region(record: dict[str, Any], region_hint: str) -> bool:
-    if not region_hint:
-        return True
-    record_prefix = record["region"]["full_prefix"]
-    if not record_prefix:
-        return True
-    return record_prefix in region_hint or region_hint.startswith(record_prefix.split()[0])
+def _query_tokens(query: str) -> list[str]:
+    normalized = normalize_place_query(query)
+    tokens = []
+    for raw in (normalized, query):
+        for tok in raw.replace(",", " ").split():
+            tok = tok.strip().lower()
+            if len(tok) >= 2 and tok not in tokens:
+                tokens.append(tok)
+    return tokens
 
 
 def search_records(
@@ -106,6 +116,7 @@ def search_records(
     user_type: str | None = None,
     open_now: bool = False,
     limit: int = 10,
+    strict_region: bool = True,
 ) -> list[dict[str, Any]]:
     records = list(load_records())
     user_type = _normalize_user_type(user_type)
@@ -113,10 +124,14 @@ def search_records(
 
     filtered: list[dict[str, Any]] = []
     for record in records:
-        if not _matches_region(record, region_prefix):
+        if strict_region and region_prefix and not regions_match(record["region"]["full_prefix"], region_prefix):
             continue
-        if tokens and not all(tok in record["search_text"] for tok in tokens):
-            continue
+        if tokens:
+            if len(tokens) > 1:
+                if not all(tok in record["search_text"] for tok in tokens):
+                    continue
+            elif not any(tok in record["search_text"] for tok in tokens):
+                continue
         if not _matches_user_type(record, user_type):
             continue
         if not _matches_open_now(record, open_now):
@@ -135,11 +150,57 @@ def search_records(
         without_coords = [r for r in filtered if r.get("distance_m") is None]
         with_coords.sort(key=lambda r: r["distance_m"])
         if with_coords:
-            filtered = [r for r in with_coords if r["distance_m"] <= radius_m] or with_coords
+            in_radius = [r for r in with_coords if r["distance_m"] <= radius_m]
+            filtered = in_radius or with_coords
         else:
             filtered = without_coords
 
     return filtered[:limit]
+
+
+def _search_by_region_and_tokens(
+    query: str,
+    *,
+    user_type: str | None,
+    open_now: bool,
+    limit: int,
+) -> list[dict[str, Any]]:
+    sido, sigungu = parse_place_query(query)
+    region_prefix = region_full_prefix(sido, sigungu) or lookup_landmark_region(query)
+    tokens = _query_tokens(query)
+
+    results = search_records(
+        query_tokens=tokens or None,
+        region_prefix=region_prefix,
+        user_type=user_type,
+        open_now=open_now,
+        limit=limit,
+        strict_region=bool(region_prefix and not tokens),
+    )
+    if results:
+        return results
+
+    if region_prefix:
+        results = search_records(
+            query_tokens=tokens or None,
+            region_prefix=region_prefix,
+            user_type=user_type,
+            open_now=open_now,
+            limit=limit,
+            strict_region=True,
+        )
+        if results:
+            return results
+
+    if tokens:
+        return search_records(
+            query_tokens=tokens,
+            user_type=user_type,
+            open_now=open_now,
+            limit=limit,
+            strict_region=False,
+        )
+    return []
 
 
 async def fetch_restrooms(
@@ -150,16 +211,17 @@ async def fetch_restrooms(
     user_type: str | None = None,
     open_now: bool = False,
     limit: int = 10,
+    region_prefix: str = "",
 ) -> list[dict[str, Any]]:
-    region_info = None
-    region_prefix = ""
-    try:
-        region_info = await coord_to_region(longitude, latitude)
-        region_prefix = _region_hint_from_coords(latitude, longitude, region_info)
-    except (ValueError, OSError):
-        pass
+    if not region_prefix:
+        try:
+            region_info = await coord_to_region(longitude, latitude)
+            if region_info and region_info.get("region_name"):
+                region_prefix = region_info["region_name"]
+        except (ValueError, OSError):
+            pass
 
-    return search_records(
+    results = search_records(
         latitude=latitude,
         longitude=longitude,
         region_prefix=region_prefix,
@@ -167,7 +229,23 @@ async def fetch_restrooms(
         user_type=user_type,
         open_now=open_now,
         limit=limit,
+        strict_region=bool(region_prefix),
     )
+    if results and any(r.get("distance_m") is not None for r in results):
+        return results
+
+    if region_prefix:
+        region_only = search_records(
+            region_prefix=region_prefix,
+            user_type=user_type,
+            open_now=open_now,
+            limit=limit,
+            strict_region=True,
+        )
+        if region_only:
+            return region_only
+
+    return []
 
 
 async def search_restrooms_by_query(
@@ -178,25 +256,53 @@ async def search_restrooms_by_query(
     open_now: bool = False,
     limit: int = 10,
 ) -> tuple[list[dict[str, Any]], str | None]:
-    coords = await geocode(query)
-    if coords is None:
-        tokens = query.replace(",", " ").split()
-        sido, sigungu = parse_place_query(query)
-        region_prefix = f"{sido} {sigungu}".strip()
-        results = search_records(
-            query_tokens=tokens if not region_prefix else None,
-            region_prefix=region_prefix,
+    normalized = normalize_place_query(query)
+    user_type = _normalize_user_type(user_type)
+
+    coords: tuple[float, float] | None = None
+    try:
+        coords = await geocode(query)
+    except (ValueError, OSError):
+        coords = lookup_landmark_coords(query)
+
+    if coords:
+        lat, lng = coords
+        landmark_region = lookup_landmark_region(query) or lookup_landmark_region(normalized)
+        results = await fetch_restrooms(
+            lat,
+            lng,
+            radius,
+            user_type=user_type,
+            open_now=open_now,
+            limit=limit,
+            region_prefix=landmark_region,
+        )
+        has_distance = any(r.get("distance_m") is not None for r in results)
+        if results and has_distance:
+            return results, f"{lat:.6f},{lng:.6f}"
+
+    results = _search_by_region_and_tokens(
+        normalized,
+        user_type=user_type,
+        open_now=open_now,
+        limit=limit,
+    )
+    if results:
+        hint = f"{coords[0]:.6f},{coords[1]:.6f}" if coords else None
+        return results, hint
+
+    if normalized != query:
+        results = _search_by_region_and_tokens(
+            query,
             user_type=user_type,
             open_now=open_now,
             limit=limit,
         )
-        return results, None
+        if results:
+            hint = f"{coords[0]:.6f},{coords[1]:.6f}" if coords else None
+            return results, hint
 
-    lat, lng = coords
-    results = await fetch_restrooms(
-        lat, lng, radius, user_type=user_type, open_now=open_now, limit=limit
-    )
-    return results, f"{lat:.6f},{lng:.6f}"
+    return [], None
 
 
 def get_record_by_id(record_id: str) -> dict[str, Any] | None:
@@ -214,7 +320,11 @@ def format_restroom_list(
 ) -> str:
     if not restrooms:
         hint = f"'{query}'" if query else "해당 조건"
-        return f"{hint}에 맞는 공중화장실을 찾지 못했습니다."
+        return (
+            f"{hint}에 맞는 공중화장실을 찾지 못했습니다.\n"
+            "- 다른 키워드(역 이름, 구 이름)로 다시 시도해 보세요.\n"
+            "- `user_type`: wheelchair, infant_care, elderly_safety, child, general"
+        )
 
     lines = []
     if query:
@@ -262,3 +372,28 @@ def format_restroom_list(
         lines.append(f"_출처: {meta['source_agency']}_")
 
     return "\n".join(lines).strip()
+
+
+def format_dataset_info() -> str:
+    meta = load_meta()
+    if not meta:
+        return "데이터가 아직 처리되지 않았습니다. `python scripts/process_restroom_data.py`를 실행하세요."
+
+    summaries_path = DATA_DIR / "공중화장실_06_통계요약.json"
+    summaries = {}
+    if summaries_path.exists():
+        with summaries_path.open(encoding="utf-8") as f:
+            summaries = json.load(f)
+
+    lines = [
+        "## modu-emergencybell Dataset Info",
+        f"- **총 화장실**: {meta.get('total_records', 0):,}곳",
+        f"- **원본 파일**: {meta.get('source_file', '')}",
+        "",
+        "### 이용자 유형별",
+    ]
+    for tag, count in summaries.get("user_type_counts", {}).items():
+        desc = meta.get("user_type_definitions", {}).get(tag, "")
+        lines.append(f"- `{tag}`: {count:,}곳 — {desc}")
+
+    return "\n".join(lines)

@@ -7,6 +7,9 @@ from typing import Any
 
 import httpx
 
+from landmarks import lookup_landmark_coords
+from region_parse import normalize_place_query
+
 KAKAO_LOCAL_BASE = "https://dapi.kakao.com"
 KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY", "")
 
@@ -25,7 +28,6 @@ async def search_keyword(
     radius: int | None = None,
     size: int = 1,
 ) -> list[dict[str, Any]]:
-    """장소 키워드 검색 (예: '벡스코', '서울대학교병원')."""
     params: dict[str, Any] = {"query": query, "size": min(size, 15)}
     if x is not None and y is not None:
         params["x"] = x
@@ -45,7 +47,6 @@ async def search_keyword(
 
 
 async def search_address(query: str, *, size: int = 1) -> list[dict[str, Any]]:
-    """주소 검색 → 좌표 (도로명/지번)."""
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(
             f"{KAKAO_LOCAL_BASE}/v2/local/search/address.json",
@@ -57,8 +58,18 @@ async def search_address(query: str, *, size: int = 1) -> list[dict[str, Any]]:
         return response.json().get("documents", [])
 
 
+def _pick_region_document(documents: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not documents:
+        return None
+    for preferred in ("H", "B"):
+        for doc in documents:
+            if doc.get("region_type") == preferred:
+                return doc
+    return documents[0]
+
+
 async def coord_to_region(longitude: float, latitude: float) -> dict[str, str] | None:
-    """WGS84 좌표 → 행정구역 (시도/시군구)."""
+    """WGS84 좌표 → 행정구역 (시군구 우선)."""
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(
             f"{KAKAO_LOCAL_BASE}/v2/local/geo/coord2regioncode.json",
@@ -68,9 +79,9 @@ async def coord_to_region(longitude: float, latitude: float) -> dict[str, str] |
         if response.status_code != 200:
             return None
         documents = response.json().get("documents", [])
-        if not documents:
+        doc = _pick_region_document(documents)
+        if not doc:
             return None
-        doc = documents[0]
         return {
             "region_code": doc.get("code", ""),
             "region_name": doc.get("address_name", ""),
@@ -78,20 +89,36 @@ async def coord_to_region(longitude: float, latitude: float) -> dict[str, str] |
         }
 
 
+def _coords_from_document(doc: dict[str, Any]) -> tuple[float, float] | None:
+    if "y" in doc and "x" in doc and doc["y"] and doc["x"]:
+        return float(doc["y"]), float(doc["x"])
+    if doc.get("road_address"):
+        ra = doc["road_address"]
+        return float(ra["y"]), float(ra["x"])
+    if doc.get("address"):
+        ad = doc["address"]
+        return float(ad["y"]), float(ad["x"])
+    return None
+
+
 async def geocode_place(query: str) -> tuple[float, float] | None:
     """장소명/키워드를 WGS84 (latitude, longitude)로 변환."""
-    documents = await search_keyword(query, size=1)
-    if not documents:
-        documents = await search_address(query, size=1)
-    if not documents:
-        return None
+    fallback = lookup_landmark_coords(query)
+    if fallback:
+        return fallback
 
-    doc = documents[0]
-    if "y" in doc and "x" in doc:
-        return float(doc["y"]), float(doc["x"])
-
-    if doc.get("road_address"):
-        return float(doc["road_address"]["y"]), float(doc["road_address"]["x"])
-    if doc.get("address"):
-        return float(doc["address"]["y"]), float(doc["address"]["x"])
-    return None
+    normalized = normalize_place_query(query)
+    for candidate in (normalized, query.strip()):
+        if not candidate:
+            continue
+        try:
+            documents = await search_keyword(candidate, size=1)
+            if not documents:
+                documents = await search_address(candidate, size=1)
+            if documents:
+                coords = _coords_from_document(documents[0])
+                if coords:
+                    return coords
+        except (ValueError, OSError):
+            break
+    return lookup_landmark_coords(normalized)

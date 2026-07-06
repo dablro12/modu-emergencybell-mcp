@@ -1,6 +1,6 @@
 [project]
 name = "modu-emergencybell-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "modu-emergencybell(모두의비상벨) — PlayMCP emergency guide MCP"
 requires-python = ">=3.10"
 dependencies = [
@@ -11,3 +11,8 @@ dependencies = [
 
 [project.scripts]
 modu-emergencybell = "modu_emergencybell:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]

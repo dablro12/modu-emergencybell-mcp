@@ -9,14 +9,15 @@ from typing import Any
 
 from helpers import haversine_m
 from kakao_local import coord_to_region, geocode_place
-from region_parse import parse_place_query
+from landmarks import lookup_landmark_coords, lookup_landmark_region
+from region_parse import normalize_place_query, parse_place_query, region_full_prefix, regions_match
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "emergencybell"
 RECORDS_FILE = DATA_DIR / "safety_bell_records.json"
 
 SAFETY_BELL_DISCLAIMER = (
     "⚠️ **안내**: 범죄예방용 **길·공원 안전비상벨** 위치입니다. "
-    "화장실 벽 비상벨(`search_restroom` · `elderly_safety`)과 다릅니다. "
+    "화장실 벽 비상벨(`search_restroom` · `user_type=elderly_safety`)과 다릅니다. "
     "**119 신고 대행·발신 없음.** 생명이 위협되면 **112**(범죄) 또는 **119**(응급)에 직접 전화하세요."
 )
 
@@ -29,15 +30,6 @@ def load_records() -> tuple[dict[str, Any], ...]:
         return tuple(json.load(f))
 
 
-def _matches_region(record: dict[str, Any], region_hint: str) -> bool:
-    if not region_hint:
-        return True
-    prefix = record["region"]["full_prefix"]
-    if not prefix:
-        return True
-    return prefix in region_hint or region_hint.startswith(prefix.split()[0])
-
-
 def search_safety_bells(
     *,
     latitude: float,
@@ -46,13 +38,14 @@ def search_safety_bells(
     place_type: str | None = None,
     region_prefix: str = "",
     limit: int = 5,
+    strict_region: bool = False,
 ) -> list[dict[str, Any]]:
     records = list(load_records())
     place_type = (place_type or "").strip()
     results: list[dict[str, Any]] = []
 
     for record in records:
-        if not _matches_region(record, region_prefix):
+        if strict_region and region_prefix and not regions_match(record["region"]["full_prefix"], region_prefix):
             continue
         if place_type and place_type not in record["place_type"]:
             continue
@@ -117,7 +110,7 @@ def format_safety_bell_list(
 
 
 def _region_centroid(region_prefix: str) -> tuple[float, float] | None:
-    matches = [r for r in load_records() if _matches_region(r, region_prefix)]
+    matches = [r for r in load_records() if regions_match(r["region"]["full_prefix"], region_prefix)]
     if not matches:
         return None
     lat = sum(r["lat"] for r in matches) / len(matches)
@@ -136,14 +129,19 @@ async def find_safety_bells_near(
 ) -> str:
     lat, lng = latitude, longitude
     region_prefix = ""
+    normalized_query = normalize_place_query(place_query) if place_query else None
 
     if place_query and (lat is None or lng is None):
-        try:
-            coords = await geocode_place(place_query)
-            if coords:
-                lat, lng = coords
-        except (ValueError, OSError, Exception):
-            pass
+        coords = lookup_landmark_coords(place_query)
+        if coords:
+            lat, lng = coords
+        else:
+            try:
+                coords = await geocode_place(place_query)
+                if coords:
+                    lat, lng = coords
+            except (ValueError, OSError, Exception):
+                pass
 
     if lat is not None and lng is not None:
         try:
@@ -154,12 +152,10 @@ async def find_safety_bells_near(
             pass
 
     if place_query and not region_prefix:
-        sido, sigungu = parse_place_query(place_query)
-        region_prefix = f"{sido} {sigungu}".strip()
-
-    if place_query and not region_prefix:
-        sido, sigungu = parse_place_query(place_query)
-        region_prefix = f"{sido} {sigungu}".strip()
+        region_prefix = lookup_landmark_region(place_query)
+        if not region_prefix:
+            sido, sigungu = parse_place_query(place_query)
+            region_prefix = region_full_prefix(sido, sigungu)
 
     region_fallback = False
     if (lat is None or lng is None) and region_prefix:
@@ -170,7 +166,7 @@ async def find_safety_bells_near(
 
     if lat is None or lng is None:
         return (
-            "좌표를 특정하지 못했습니다. `place_query`에 **구/군**까지 넣거나 "
+            "좌표를 특정하지 못했습니다. `place_query`에 **구/군** 또는 **역·랜드마크**를 넣거나 "
             "`latitude`/`longitude`를 제공하세요.\n\n"
             f"{SAFETY_BELL_DISCLAIMER}"
         )
@@ -183,8 +179,21 @@ async def find_safety_bells_near(
         place_type=place_type,
         region_prefix=region_prefix,
         limit=limit,
+        strict_region=False,
     )
+
+    if not bells and place_type:
+        bells = search_safety_bells(
+            latitude=lat,
+            longitude=lng,
+            radius_m=search_radius * 2,
+            place_type=None,
+            region_prefix=region_prefix,
+            limit=limit,
+            strict_region=False,
+        )
+
     coords_hint = f"{lat:.6f},{lng:.6f}"
     if region_fallback:
         coords_hint += f" (지역 중심 추정 · {region_prefix})"
-    return format_safety_bell_list(bells, query=place_query, coords_hint=coords_hint)
+    return format_safety_bell_list(bells, query=normalized_query or place_query, coords_hint=coords_hint)
