@@ -1,0 +1,13 @@
+{
+  "source_csv": "안전비상벨위치정보.csv",
+  "record_count": 93239,
+  "place_type_counts": {
+    "가로변": 51901,
+    "기타": 21996,
+    "공원": 9860,
+    "화장실": 7980,
+    "건물": 1121,
+    "주차장": 381
+  },
+  "note": "Crime-prevention outdoor bells — NOT restroom wall buttons or 119 dispatch."
+}

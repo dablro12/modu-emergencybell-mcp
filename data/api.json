@@ -1,0 +1,397 @@
+{
+  "project": {
+    "name_ko": "모두의 비상벨",
+    "name_en": "modu-emergencybell",
+    "display_pair": "modu-emergencybell(모두의비상벨)",
+    "identify_name": "modu-emergencybell",
+    "tagline_ko": "밖에서 급할 때, 누구에게 전화하고 어디로 갈지",
+    "tagline_en": "When you're outside—who to call and where to go."
+  },
+  "env_keys": {
+    "KAKAO_REST_API_KEY": {
+      "required": true,
+      "purpose": "Kakao Local — geocode, coord2region",
+      "register": "https://developers.kakao.com/"
+    },
+    "DATA_GO_KR_SERVICE_KEY": {
+      "required": true,
+      "phase": "mvp_medical",
+      "purpose": "공공데이터포털 단일 인증키 (응급·병원·약국 API 공통)",
+      "register": "https://www.data.go.kr/"
+    }
+  },
+  "apis": [
+    {
+      "id": "hotlines_local",
+      "name_ko": "긴급·상담 핫라인 (정적)",
+      "name_en": "Emergency Hotlines (Curated Static)",
+      "provider": "정부·공공기관 공식 번호 (수동 큐레이션)",
+      "type": "local_json",
+      "status": "implemented_data",
+      "phase": "mvp",
+      "priority": 0,
+      "mcp_tools": ["get_emergency_hotlines"],
+      "data_path": "data/hotlines/hotlines.json",
+      "license": "번호 출처 표기, MCP는 전화 발신 안 함",
+      "notes": "외부 API 없음. 화장실 벽 비상벨(on-site) vs 119/1339/112 구분 포함. 분기별 번호 검증.",
+      "implementation": {
+        "tool": "get_emergency_hotlines",
+        "purpose_ko": "「이 상황에서 어디에 전화해야 해?」에 답함 — 핫라인 목록이 아닌 상황별 전화 안내",
+        "params": {
+          "situation_description": {
+            "type": "string",
+            "required": true,
+            "description_ko": "사용자가 말한 상황 그대로. 예: '화장실에서 넘어졌어', '119랑 1339 차이', '외국인인데 병원'"
+          },
+          "situation": {
+            "type": "string",
+            "required": false,
+            "enum": [
+              "life_threatening",
+              "medical_urgent",
+              "restroom_help",
+              "foreign_visitor",
+              "poison",
+              "police",
+              "mental_crisis",
+              "school_violence",
+              "utility_electric",
+              "utility_gas",
+              "safety_hazard",
+              "unsure"
+            ],
+            "description_ko": "호스트 AI가 이미 분류한 경우. 없으면 keywords_ko로 자동 매칭"
+          },
+          "language": {
+            "type": "string",
+            "enum": ["ko", "en"],
+            "default": "ko"
+          }
+        },
+        "response": "markdown — headline「이 상황에서는 → ○○」+ 번호 상세 + restroom_bell + disclaimer + next_tool",
+        "matching": "keywords_ko in situation_routing; fallback unsure; explicit situation param wins",
+        "latency_target_ms": 100
+      },
+      "hotline_numbers_mvp": [
+        { "number": "112", "use": "범죄·폭력·사이버 해킹 (경찰)" },
+        { "number": "119", "use": "화재·구조·구급·유해물질·해양·안전신고" },
+        { "number": "110", "use": "정부 민원·비긴급 (긴급 아님)" },
+        { "number": "117", "use": "학교폭력 신고" },
+        { "number": "1339", "use": "응급의료 상담·병원 안내 (24h, 외국어)" },
+        { "number": "1330", "use": "관광통역 (외국인)" },
+        { "number": "1577-1377", "use": "독극물·약물 **섭취** 중독" },
+        { "number": "1544-4500", "use": "가스 **누출·설비** 사고" },
+        { "number": "123", "use": "전기 고장 (한전)" },
+        { "number": "129", "use": "자살예방·정서 위기" },
+        { "number": "1393", "use": "정신건강 위기상담" },
+        { "number": "1366", "use": "여성·가족 긴급 상담" },
+        { "number": "1388", "use": "청소년 상담" }
+      ],
+      "restroom_bell": {
+        "not_119": true,
+        "description_ko": "화장실 비상벨 → 시설 관리인. 119 아님.",
+        "pairs_with": "search_restroom (user_type=elderly_safety)"
+      }
+    },
+    {
+      "id": "toilet_local",
+      "name_ko": "행정안전부 공중화장실",
+      "name_en": "MOIS Public Restroom Dataset",
+      "provider": "행정안전부",
+      "type": "local_json",
+      "status": "implemented",
+      "phase": "mvp",
+      "mcp_tools": ["search_restroom", "find_nearest_restroom", "get_facility_detail"],
+      "data_path": "data/toilet_data/",
+      "source_csv": "data/toilet_data/공중화장실정보.csv",
+      "records": 59757,
+      "license": "공공데이터 출처표시",
+      "notes": "좌표 없음 → Kakao geocode + region_index. 비상벨=elderly_safety/emergency_bell (~23234)"
+    },
+    {
+      "id": "kakao_local",
+      "name_ko": "Kakao Local API",
+      "name_en": "Kakao Local REST API",
+      "provider": "Kakao",
+      "type": "rest",
+      "status": "implemented",
+      "phase": "mvp",
+      "mcp_tools": ["search_restroom", "find_nearest_restroom"],
+      "base_url": "https://dapi.kakao.com",
+      "endpoints": [
+        {
+          "path": "/v2/local/search/keyword.json",
+          "use": "장소명 → 좌표"
+        },
+        {
+          "path": "/v2/local/search/address.json",
+          "use": "주소 → 좌표 (fallback)"
+        },
+        {
+          "path": "/v2/local/geo/coord2regioncode.json",
+          "use": "좌표 → 시군구 (화장실 1차 필터)"
+        }
+      ],
+      "auth": "KAKAO_REST_API_KEY",
+      "playmcp_note": "Server/Tool 이름에 kakao 포함 금지. 내부 geocode 모듈 사용은 OK."
+    },
+    {
+      "id": "nemc_er",
+      "name_ko": "국립중앙의료원 전국 응급의료기관 정보",
+      "name_en": "NEMC Emergency Medical Institution Info",
+      "provider": "국립중앙의료원 / 중앙응급의료센터",
+      "type": "rest_xml",
+      "status": "planned",
+      "phase": "mvp",
+      "priority": 1,
+      "mcp_tools": ["find_emergency_room", "get_facility_detail"],
+      "data_go_kr_id": "15000563",
+      "portal_url": "https://www.data.go.kr/data/15000563/openapi.do",
+      "base_url": "http://apis.data.go.kr/B552657/ErmctInfoInqireService",
+      "endpoints": [
+        {
+          "operation": "getEmrrmRltmUsefulSckbdInfoInqire",
+          "use": "시도·시군구별 응급실 실시간 가용 병상",
+          "key_params": ["Q0", "Q1", "pageNo", "numOfRows"]
+        },
+        {
+          "operation": "getEgytBassInfoInqire",
+          "use": "응급의료기관 기본정보 (전화·주소·좌표)",
+          "key_params": ["Q0", "Q1", "pageNo", "numOfRows"]
+        },
+        {
+          "operation": "getEgytListInfoInqire",
+          "use": "응급의료기관 목록",
+          "key_params": ["Q0", "Q1"]
+        }
+      ],
+      "auth": "DATA_GO_KR_SERVICE_KEY",
+      "format": "XML",
+      "update": "실시간",
+      "traffic_dev": 1000
+    },
+    {
+      "id": "nemc_clinic",
+      "name_ko": "국립중앙의료원 전국 병·의원 찾기",
+      "name_en": "NEMC Hospital Clinic Search",
+      "provider": "국립중앙의료원",
+      "type": "rest_xml",
+      "status": "planned",
+      "phase": "mvp",
+      "priority": 1,
+      "mcp_tools": ["find_open_clinic"],
+      "data_go_kr_id": "15000736",
+      "portal_url": "https://www.data.go.kr/data/15000736/openapi.do",
+      "base_url": "http://apis.data.go.kr/B552657/HsptlAsembySearchService",
+      "endpoints": [
+        {
+          "operation": "getHsptlMdcncListInfoInqire",
+          "use": "지역·진료과·요일(야간/공휴) 병·의원 검색",
+          "key_params": {
+            "Q0": "시도",
+            "Q1": "시군구",
+            "QD": "진료과목 코드 (D000 계열, 소아 D013 등)",
+            "QT": "진료요일 1~7, 공휴 8",
+            "QZ": "B=병원 C=의원",
+            "QN": "기관명"
+          }
+        }
+      ],
+      "auth": "DATA_GO_KR_SERVICE_KEY",
+      "format": "XML",
+      "notes": "MedInfo·koreaNightClinic과 동일 계열. 주말·야간 소아과 starter에 사용."
+    },
+    {
+      "id": "nemc_pharmacy",
+      "name_ko": "국립중앙의료원 전국 약국 정보",
+      "name_en": "NEMC Pharmacy Info",
+      "provider": "국립중앙의료원",
+      "type": "rest_xml",
+      "status": "implemented",
+      "phase": "v1.1",
+      "priority": 2,
+      "mcp_tools": ["find_open_pharmacy"],
+      "data_go_kr_id": "15000576",
+      "portal_url": "https://www.data.go.kr/data/15000576/openapi.do",
+      "base_url": "http://apis.data.go.kr/B552657/ErmctInsttInfoInqireService",
+      "endpoints": [
+        {
+          "operation": "getParmacyListInfoInqire",
+          "use": "시도·시군구·진료요일(QT) 약국 목록",
+          "key_params": ["Q0", "Q1", "QT", "QN", "pageNo", "numOfRows"]
+        },
+        {
+          "operation": "getParmacyLcInfoInqire",
+          "use": "약국 위치·상세 (hpid 등)",
+          "key_params": ["HPID"]
+        }
+      ],
+      "auth": "DATA_GO_KR_SERVICE_KEY",
+      "format": "XML",
+      "notes": "실제 영업시간은 약국 확인 권장 — 응답에 명시"
+    },
+    {
+      "id": "hira_hosp",
+      "name_ko": "건강보험심사평가원 병원정보",
+      "name_en": "HIRA Hospital Info",
+      "provider": "HIRA",
+      "type": "rest_xml",
+      "status": "optional",
+      "phase": "phase2",
+      "priority": 3,
+      "mcp_tools": ["get_facility_detail"],
+      "data_go_kr_id": "15001698",
+      "portal_url": "https://www.data.go.kr/data/15001698/openapi.do",
+      "base_url": "http://apis.data.go.kr/B551182/hospInfoServicev2",
+      "endpoints": [
+        {
+          "operation": "getHospBasisList",
+          "use": "병원명·좌표·전화 보조 (NEMC hpid 매칭 실패 시)"
+        }
+      ],
+      "auth": "DATA_GO_KR_SERVICE_KEY",
+      "format": "XML",
+      "notes": "MedInfo(카카오)와 동 계열. MVP에서는 NEMC만으로 시작 권장."
+    },
+    {
+      "id": "hira_pharmacy",
+      "name_ko": "건강보험심사평가원 약국정보",
+      "name_en": "HIRA Pharmacy Info",
+      "provider": "HIRA",
+      "type": "rest_xml",
+      "status": "optional",
+      "phase": "phase2",
+      "priority": 3,
+      "mcp_tools": ["find_open_pharmacy"],
+      "data_go_kr_id": "15001673",
+      "portal_url": "https://www.data.go.kr/data/15001673/openapi.do",
+      "base_url": "http://apis.data.go.kr/B551182/pharmacyInfoService",
+      "endpoints": [
+        {
+          "operation": "getParmacyBasisList",
+          "use": "반경·좌표 기반 약국 검색 (xPos, yPos, radius)"
+        }
+      ],
+      "auth": "DATA_GO_KR_SERVICE_KEY",
+      "notes": "NEMC 약국 API와 중복. 거리 정렬 필요 시 HIRA 우선 검토."
+    },
+    {
+      "id": "safety_bell_local",
+      "name_ko": "전국안전비상벨위치 표준데이터",
+      "name_en": "MOIS Outdoor Safety Bell Dataset",
+      "provider": "행정안전부",
+      "type": "local_json",
+      "status": "implemented",
+      "phase": "v1.2",
+      "priority": 2,
+      "mcp_tools": ["find_safety_bell"],
+      "data_go_kr_id": "15028206",
+      "portal_url": "https://www.data.go.kr/data/15028206/standard.do",
+      "data_path": "data/emergencybell/",
+      "source_csv": "data/emergencybell/안전비상벨위치정보.csv",
+      "records": 93239,
+      "license": "공공데이터 출처표시",
+      "notes": "범죄예방 길·공원 비상벨. WGS84위도/경도 컬럼 사용. 화장실 벽 비상벨과 구분."
+    },
+    {
+      "id": "phrases_local",
+      "name_ko": "외국인 문장 카드 (정적)",
+      "name_en": "Foreign Visitor Phrase Cards",
+      "provider": "modu-emergencybell curated",
+      "type": "local_json",
+      "status": "implemented",
+      "phase": "v1.3",
+      "priority": 3,
+      "mcp_tools": ["get_phrase_card"],
+      "data_path": "data/phrases/phrases.json",
+      "notes": "ko/en/ja/zh. API 없음."
+    },
+    {
+      "id": "hira_child_night",
+      "name_ko": "건강보험심사평가원 소아야간진료",
+      "name_en": "HIRA Pediatric Night Clinic",
+      "provider": "HIRA",
+      "type": "rest_xml",
+      "status": "optional",
+      "phase": "phase2",
+      "priority": 3,
+      "mcp_tools": ["find_open_clinic"],
+      "portal_url": "https://opendata.hira.or.kr/",
+      "base_url": "http://apis.data.go.kr/B551182/spclMdlrtHospInfoService",
+      "endpoints": [
+        {
+          "operation": "getChildNightMdlrtList",
+          "use": "소아 야간진료 병·의원 (지역·반경)"
+        }
+      ],
+      "auth": "DATA_GO_KR_SERVICE_KEY",
+      "notes": "find_open_clinic 소아 필터 보강용. NEMC QT=8과 병행."
+    }
+  ],
+  "excluded": {
+    "reason": "119·상용·타 MCP·MCP 부적합",
+    "items": [
+      {
+        "name": "119 / 112 신고·구급 dispatch",
+        "reason": "상용 긴급전화. MCP는 안내 문구만."
+      },
+      {
+        "name": "증상 진단·triage LLM",
+        "reason": "의료 행위·면책 리스크"
+      },
+      {
+        "name": "식약처 e약은요 / DUR",
+        "reason": "hereNowER·yakjalal 영역"
+      },
+      {
+        "name": "어린이집·예방접종·키즈카페",
+        "reason": "키즈허브·맘케어"
+      },
+      {
+        "name": "무장애 여행 코스",
+        "reason": "클리어루트"
+      },
+      {
+        "name": "장기요양·치매 행정",
+        "reason": "돌봄내비"
+      }
+    ]
+  },
+  "tool_api_map": {
+    "get_emergency_hotlines": ["hotlines_local"],
+    "search_restroom": ["toilet_local", "kakao_local", "hotlines_local"],
+    "find_nearest_restroom": ["toilet_local", "kakao_local"],
+    "find_open_clinic": ["nemc_clinic", "hira_child_night"],
+    "find_emergency_room": ["nemc_er", "kakao_local"],
+    "find_open_pharmacy": ["nemc_pharmacy", "hira_pharmacy"],
+    "find_safety_bell": ["safety_bell_local", "kakao_local"],
+    "get_phrase_card": ["phrases_local"],
+    "get_facility_detail": ["toilet_local", "nemc_er", "nemc_clinic", "nemc_pharmacy", "hira_hosp"]
+  },
+  "mvp_tool_count": {
+    "core": 9,
+    "with_dataset_info": 10,
+    "list": [
+      "get_emergency_hotlines",
+      "search_restroom",
+      "find_nearest_restroom",
+      "find_open_clinic",
+      "find_emergency_room",
+      "find_open_pharmacy",
+      "find_safety_bell",
+      "get_phrase_card",
+      "get_restroom_detail",
+      "get_dataset_info"
+    ],
+    "note": "v1.3 — PlayMCP 권장 상한 10개"
+  },
+  "mvp_apply_checklist": [
+    "공공데이터포털 회원가입",
+    "15000563 응급의료기관 정보 — 활용신청",
+    "15000736 병·의원 찾기 — 활용신청",
+    "15000576 약국 정보 — 활용신청 (v1.1)",
+    "DATA_GO_KR_SERVICE_KEY → .env",
+    "KAKAO_REST_API_KEY → .env",
+    "python scripts/process_safety_bell_data.py (v1.2 CSV→JSON)"
+  ]
+}

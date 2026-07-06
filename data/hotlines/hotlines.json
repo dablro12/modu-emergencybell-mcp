@@ -1,0 +1,435 @@
+{
+  "meta": {
+    "version": "1.1.0",
+    "updated": "2026-07-06",
+    "maintainer_note": "공식 번호·기관명은 배포 전 최종 확인. MCP는 전화 연결하지 않고 안내만 제공.",
+    "sources": [
+      "질병관리청 응급의료 안내",
+      "국립중앙의료원 중앙응급의료센터",
+      "행정안전부 공중화장실 비상벨 안내(시설 관리인 연락)",
+      "국민안전24 (safekorea.go.kr)",
+      "재난안전데이터공유플랫폼",
+      "공공데이터포털 — 시·군·구 비상연락망"
+    ]
+  },
+  "emergency_trio": {
+    "title_ko": "긴급 신고 통합 (112 · 119 · 110)",
+    "title_en": "Integrated emergency reporting (112 · 119 · 110)",
+    "summary_ko": "**112**=경찰·범죄, **119**=재난·안전·구급, **110**=정부 민원·**비긴급** 상담. 생명·안전 위협이면 112 또는 119.",
+    "summary_en": "**112**=police/crime, **119**=disaster/safety/ambulance, **110**=government civil service, **non-emergency**.",
+    "lines": [
+      {
+        "number": "112",
+        "role_ko": "범죄·폭력·사이버 해킹 등 **경찰** 긴급 신고",
+        "role_en": "Police: crime, violence, cybercrime",
+        "not_for_ko": "화재·구급·가스 누출 → 119"
+      },
+      {
+        "number": "119",
+        "role_ko": "화재·**구조·구급**·유해물질 유출·해양 사고 등 **재난·안전** 신고",
+        "role_en": "Fire, rescue, ambulance, hazmat, marine accidents",
+        "not_for_ko": "범죄·경찰 필요 → 112 / 병원 어디 갈지 모름 → 1339"
+      },
+      {
+        "number": "110",
+        "role_ko": "정부 **민원 안내**·**비긴급** 상담 (민방위 관련 포함)",
+        "role_en": "Government civil complaints, non-emergency (incl. civil defense info)",
+        "not_for_ko": "생명·안전 긴급 → 119 또는 112 (110 아님)"
+      }
+    ]
+  },
+  "restroom_emergency_bell": {
+    "id": "restroom_bell",
+    "type": "on_site_device",
+    "name_ko": "공중화장실 비상벨 (벽 버튼)",
+    "name_en": "Public restroom emergency call button",
+    "description_ko": "화장실 안 벽에 있는 **비상벨**은 119로 연결되지 않습니다. 누르면 **해당 시설(관리실·경비·매점)** 로 연결되어 직원이 오도록 합니다. 넘어짐·문이 안 열림·몸이 불편할 때 **먼저 비상벨**을 누르세요.",
+    "description_en": "The **emergency button** inside the restroom does **not** dial 119. It alerts **on-site staff** (management, security). Press it first if you fell, feel unwell, or cannot exit.",
+    "when_no_response_ko": "응답이 없거나 의식·호흡에 문제가 있으면 **119**를 누르세요. 범죄·위협이면 **112**.",
+    "when_no_response_en": "If no one comes or breathing/consciousness is affected, call **119**. For crime/threats, call **112**.",
+    "links_to_tool": "search_restroom (user_type=elderly_safety) — 비상벨 있는 화장실 위치"
+  },
+  "hotlines": [
+    {
+      "id": "119",
+      "number": "119",
+      "short_dial": true,
+      "name_ko": "119 (재난·안전·구급)",
+      "name_en": "119 (Disaster, Safety & Ambulance)",
+      "category_ko": "긴급 신고 · 안전신고센터",
+      "priority": 1,
+      "available_24h": true,
+      "interpretation_ko": "외국어 통역 지원 가능(상황에 따라)",
+      "interpretation_en": "Foreign-language interpretation may be available",
+      "when_ko": "화재, 구조·구급, 유해물질·가스 **누출**, 해양 사고, 의식 없음·심한 출혈·호흡 곤란, **안전 위협 요소** 발견(낙하물·위험 시설 등)",
+      "when_en": "Fire, rescue, ambulance, hazmat/gas leaks, marine accidents, unconsciousness, severe bleeding, breathing difficulty, discovered safety hazards",
+      "situations": ["life_threatening", "fire", "rescue", "hazmat", "marine", "safety_hazard", "unconscious", "chest_pain", "breathing", "severe_injury"],
+      "official_url": "https://www.safekorea.go.kr/"
+    },
+    {
+      "id": "112",
+      "number": "112",
+      "short_dial": true,
+      "name_ko": "112 (경찰·사이버)",
+      "name_en": "112 (Police & Cybercrime)",
+      "category_ko": "긴급 신고",
+      "priority": 1,
+      "available_24h": true,
+      "when_ko": "범죄·폭력·납치·스토킹·**사이버 해킹**·교통사고(형사), 즉각적인 경찰 필요",
+      "when_en": "Crime, assault, kidnapping, stalking, cybercrime/hacking, traffic accidents requiring police",
+      "situations": ["police", "crime", "violence", "cyber", "traffic_accident_police"],
+      "official_url": "https://www.police.go.kr/"
+    },
+    {
+      "id": "110",
+      "number": "110",
+      "short_dial": true,
+      "name_ko": "110 (정부 민원·비긴급)",
+      "name_en": "110 (Government Civil Service)",
+      "category_ko": "비긴급",
+      "priority": 4,
+      "available_24h": true,
+      "when_ko": "정부 **민원 안내**·**비긴급** 상담 (민방위 관련 포함). **생명·안전 긴급 아님**",
+      "when_en": "Government civil complaints, non-emergency consultation (incl. civil defense). Not for life-threatening emergencies",
+      "situations": ["civil_complaint", "non_emergency", "civil_defense_info"],
+      "official_url": "https://www.gov.kr/"
+    },
+    {
+      "id": "117",
+      "number": "117",
+      "short_dial": true,
+      "name_ko": "117 (학교폭력 신고)",
+      "name_en": "117 (School Violence Report)",
+      "category_ko": "분야별 비상",
+      "priority": 2,
+      "available_24h": true,
+      "when_ko": "**학교폭력** 신고·상담 (피해·목격·가해 신고)",
+      "when_en": "School violence reporting and counseling",
+      "situations": ["school_violence"],
+      "official_url": "https://www.safe182.go.kr/"
+    },
+    {
+      "id": "1339",
+      "number": "1339",
+      "short_dial": true,
+      "name_ko": "1339 (응급의료 상담)",
+      "name_en": "1339 (Emergency Medical Info)",
+      "priority": 2,
+      "available_24h": true,
+      "interpretation_ko": "24시간, 외국어 상담 가능",
+      "interpretation_en": "24/7, foreign-language support available",
+      "when_ko": "119 전 **병원·응급실·야간진료** 어디로 갈지 모르겠을 때, 아이/어르신 아픔, 응급 여부가 애매할 때",
+      "when_en": "Unsure if ER vs clinic, child/elderly illness, where to go before/during emergency",
+      "situations": ["medical_urgent", "medical_unsure", "foreign_visitor", "child_fever", "after_hours"],
+      "official_url": "https://www.e-gen.or.kr/"
+    },
+    {
+      "id": "1330",
+      "number": "1330",
+      "short_dial": true,
+      "name_ko": "1330 (관광통역안내)",
+      "name_en": "1330 (Tourism Interpretation)",
+      "priority": 2,
+      "available_24h": true,
+      "interpretation_ko": "한국어·영어·일본어·중국어 등",
+      "interpretation_en": "Korean, English, Japanese, Chinese, etc.",
+      "when_ko": "외국인 관광객·체류자, 병원/약국/택시 가는 길 **말이 안 통할 때**",
+      "when_en": "Foreign visitors who need language help at hospital, pharmacy, or taxi",
+      "situations": ["foreign_visitor", "language_barrier"],
+      "official_url": "https://www.kto.or.kr/"
+    },
+    {
+      "id": "1577-1377",
+      "number": "1577-1377",
+      "short_dial": false,
+      "name_ko": "1577-1377 (독극물·약물 중독)",
+      "name_en": "1577-1377 (Poison Control)",
+      "priority": 2,
+      "available_24h": true,
+      "when_ko": "약·화학물질·가스 등 **먹거나 마신 것**이 걱정될 때 (의식 변화·경련 있으면 119 병행)",
+      "when_en": "Suspected poisoning from medicine or chemicals (call 119 if unconscious or seizing)",
+      "situations": ["poison", "overdose", "chemical"],
+      "official_url": "https://www.kdca.go.kr/"
+    },
+    {
+      "id": "129",
+      "number": "129",
+      "short_dial": true,
+      "name_ko": "129 (자살예방·정서 위기)",
+      "name_en": "129 (Suicide Prevention & Crisis)",
+      "priority": 2,
+      "available_24h": true,
+      "when_ko": "극심한 정서적 위기, 자해·자살 생각",
+      "when_en": "Severe emotional crisis, self-harm or suicidal thoughts",
+      "situations": ["mental_crisis", "suicide"],
+      "official_url": "https://www.spckorea.or.kr/"
+    },
+    {
+      "id": "1393",
+      "number": "1393",
+      "short_dial": true,
+      "name_ko": "1393 (정신건강 위기상담)",
+      "name_en": "1393 (Mental Health Crisis)",
+      "priority": 3,
+      "available_24h": true,
+      "when_ko": "패닉·극심한 불안 등 정신건강 긴급 상담 (즉각적 신체 위험은 119)",
+      "when_en": "Panic, severe anxiety; call 119 for immediate physical danger",
+      "situations": ["mental_crisis"],
+      "official_url": "https://www.mohw.go.kr/"
+    },
+    {
+      "id": "1366",
+      "number": "1366",
+      "short_dial": true,
+      "name_ko": "1366 (여성·가족 긴급 상담)",
+      "name_en": "1366 (Women & Family Emergency)",
+      "category_ko": "분야별 비상",
+      "priority": 2,
+      "available_24h": true,
+      "when_ko": "가정폭력·성폭력·스토킹 피해 상담·연계",
+      "when_en": "Domestic violence, sexual violence, stalking support",
+      "situations": ["violence", "domestic_violence"],
+      "official_url": "https://www.mogef.go.kr/"
+    },
+    {
+      "id": "1388",
+      "number": "1388",
+      "short_dial": true,
+      "name_ko": "1388 (청소년 상담)",
+      "name_en": "1388 (Youth Counseling)",
+      "category_ko": "분야별 비상",
+      "priority": 3,
+      "available_24h": true,
+      "when_ko": "아동·청소년 위기 (가출·가정 문제·정서 위기). **학교폭력 신고**는 **117**",
+      "when_en": "Children and youth in crisis. For school violence **reporting**, use **117**",
+      "situations": ["child_crisis", "youth_counseling"],
+      "official_url": "https://www.cy1388.or.kr/"
+    },
+    {
+      "id": "123",
+      "number": "123",
+      "short_dial": true,
+      "name_ko": "123 (한전 전기 고장)",
+      "name_en": "123 (KEPCO Power Outage)",
+      "category_ko": "생활 비상",
+      "priority": 3,
+      "available_24h": true,
+      "when_ko": "정전·전기 **고장** 신고 (한국전력). **감전·스파크·화재**면 **119**",
+      "when_en": "Power outage or electrical fault (KEPCO). Call **119** for shock, sparks, or fire",
+      "situations": ["utility_electric", "power_outage"],
+      "official_url": "https://www.kepco.co.kr/"
+    },
+    {
+      "id": "1544-4500",
+      "number": "1544-4500",
+      "short_dial": false,
+      "name_ko": "1544-4500 (가스 사고·누출)",
+      "name_en": "1544-4500 (Gas Safety)",
+      "category_ko": "생활 비상",
+      "priority": 2,
+      "available_24h": true,
+      "when_ko": "**가스 누출**·가스 설비 **사고** 신고 (한국가스안전공사). 냄새·폭발 위험·의식 잃음 → **119** 병행",
+      "when_en": "Gas leak or gas facility accident (KGS). Also **119** if smell, explosion risk, or unconsciousness",
+      "situations": ["utility_gas", "gas_leak"],
+      "official_url": "https://www.kgs.or.kr/"
+    }
+  ],
+  "situation_routing": {
+    "life_threatening": {
+      "label_ko": "생명이 위협될 때",
+      "label_en": "Life-threatening emergency",
+      "example_questions_ko": [
+        "의식 잃었어 어디에 전화해?",
+        "가슴이 너무 아픈데 119야?",
+        "큰 사고 났어 뭐부터 해?",
+        "호흡이 안 돼"
+      ],
+      "keywords_ko": ["의식", "출혈", "가슴", "호흡", "119", "구급", "화재", "사고", "쓰러"],
+      "headline_ko": "**이 상황에서는 → 119** (재난·안전·구급)를 먼저 전화하세요.",
+      "headline_en": "**In this situation → call 119** (disaster, safety, ambulance) first.",
+      "primary": ["119"],
+      "secondary": ["1339"],
+      "action_ko": "즉시 119. 통화 후 필요 시 find_emergency_room으로 병상 확인.",
+      "action_en": "Call 119 immediately. Then use find_emergency_room for bed availability if needed."
+    },
+    "medical_urgent": {
+      "label_ko": "아프긴 한데 응급실 갈지 모르겠을 때",
+      "label_en": "Sick but unsure if ER",
+      "example_questions_ko": [
+        "119랑 1339 뭐가 달라?",
+        "아이가 열이 나는데 어디에 전화해?",
+        "주말 밤인데 병원 어디로 가? 전화 먼저?",
+        "응급실 가야 하나?",
+        "할머니가 갑자기 아프신데 뭐부터?"
+      ],
+      "keywords_ko": ["1339", "응급실", "병원", "열", "아픔", "야간", "주말", "어디", "119", "애매"],
+      "headline_ko": "**이 상황에서는 → 1339** (응급의료 상담)를 먼저 전화하세요. 생명 위협이면 119.",
+      "headline_en": "**In this situation → call 1339** first. If life-threatening, call 119.",
+      "primary": ["1339"],
+      "secondary": ["119"],
+      "action_ko": "응급 여부 모르면 1339 → find_open_clinic 또는 find_emergency_room",
+      "action_en": "If unsure, 1339 first → then find_open_clinic or find_emergency_room"
+    },
+    "restroom_help": {
+      "label_ko": "화장실 안에서 급할 때",
+      "label_en": "Emergency inside a restroom",
+      "example_questions_ko": [
+        "화장실 비상벨 누르면 119야?",
+        "화장실에서 넘어졌어 어디에 전화해?",
+        "문이 안 열려",
+        "화장실에서 몸이 안 좋아"
+      ],
+      "keywords_ko": ["화장실", "비상벨", "벨", "넘어", "문", "갇", "화장실 안"],
+      "headline_ko": "**이 상황에서는 → 화장실 벽 비상벨**을 먼저 누르세요. (119 아님, 시설 직원 호출) 응답 없으면 119.",
+      "headline_en": "**In this situation → press the restroom wall button** first (not 119). If no response, call 119.",
+      "primary": ["restroom_bell"],
+      "secondary": ["119", "112"],
+      "action_ko": "화장실 안 **비상벨** 먼저 → 응답 없으면 119/112. modu-emergencybell로 비상벨 있는 화장실 검색.",
+      "action_en": "Press **restroom emergency button** first → if no response, 119/112. Search restrooms with bells via modu-emergencybell."
+    },
+    "foreign_visitor": {
+      "label_ko": "외국인·말이 안 통할 때",
+      "label_en": "Foreign visitor / language barrier",
+      "example_questions_ko": [
+        "외국인인데 병원 가야 해 어디에 전화?",
+        "영어로 응급 전화 할 수 있어?",
+        "한국에서 아프면 뭐부터?"
+      ],
+      "keywords_ko": ["외국", "foreign", "영어", "통역", "1330", "관광", "말"],
+      "headline_ko": "**이 상황에서는 → 1330** (통역) + **1339** (의료). 생명 위협이면 119.",
+      "headline_en": "**In this situation → 1330** (interpretation) + **1339** (medical). 119 if life-threatening.",
+      "primary": ["1330", "1339"],
+      "secondary": ["119"],
+      "action_ko": "1330(통역) + 1339(의료). 생명 위협이면 119.",
+      "action_en": "1330 (interpretation) + 1339 (medical). 119 if life-threatening."
+    },
+    "poison": {
+      "label_ko": "약·독극물 먹었을 때",
+      "label_en": "Poisoning / overdose",
+      "example_questions_ko": [
+        "약을 잘못 먹었어 어디에 전화?",
+        "아이가 세제 마셨어",
+        "독극물 센터 번호?"
+      ],
+      "keywords_ko": ["독", "약", "먹", "마셨", "중독", "1577"],
+      "headline_ko": "**이 상황에서는 → 1577-1377** (독극물). 의식 변화·경련이면 119도.",
+      "headline_en": "**In this situation → 1577-1377** (poison control). Also 119 if unconscious or seizing.",
+      "primary": ["1577-1377"],
+      "secondary": ["119"],
+      "action_ko": "1577-1377 상담. 의식 변화·경련 시 119.",
+      "action_en": "Call poison center. 119 if unconscious or seizing."
+    },
+    "police": {
+      "label_ko": "범죄·경찰이 필요할 때",
+      "label_en": "Police needed",
+      "example_questions_ko": [
+        "도난당했어 어디에 전화?",
+        "누가 쫓아와",
+        "교통사고 났는데 경찰?"
+      ],
+      "keywords_ko": ["경찰", "112", "범죄", "폭력", "도난", "쫓", "스토킹", "해킹", "사이버"],
+      "headline_ko": "**이 상황에서는 → 112** (경찰). 부상 심하면 119도.",
+      "headline_en": "**In this situation → call 112** (police). Also 119 for serious injury.",
+      "primary": ["112"],
+      "secondary": [],
+      "action_ko": "112. 응급 부상 병행 시 119.",
+      "action_en": "112. Also 119 if medical emergency."
+    },
+    "mental_crisis": {
+      "label_ko": "정서·정신 건강 위기",
+      "label_en": "Mental health crisis",
+      "example_questions_ko": [
+        "너무 힘들어 어디에 전화해?",
+        "자살 생각이 들어",
+        "패닉 왔어"
+      ],
+      "keywords_ko": ["자살", "129", "1393", "정신", "패닉", "우울", "위기"],
+      "headline_ko": "**이 상황에서는 → 129** 또는 **1393**. 자해 시도 중이면 119.",
+      "headline_en": "**In this situation → 129** or **1393**. Call 119 if active self-harm.",
+      "primary": ["129", "1393"],
+      "secondary": ["119"],
+      "action_ko": "129 또는 1393. 자해·자살 시도 진행 중이면 119.",
+      "action_en": "129 or 1393. 119 if active self-harm attempt."
+    },
+    "unsure": {
+      "label_ko": "뭐부터 할지 모를 때",
+      "label_en": "Not sure what to do",
+      "example_questions_ko": [
+        "밖에서 급한데 어디에 전화해야 해?",
+        "119 1339 112 뭐가 달라?",
+        "뭐부터 해야 해?"
+      ],
+      "keywords_ko": ["모르", "뭐", "어디", "전화", "급", "헷갈"],
+      "headline_ko": "**112**=경찰·범죄, **119**=재난·구급·안전, **110**=민원(비긴급). **생명·안전 위협 → 119**, **범죄 → 112**, **병원·응급 애매 → 1339**.",
+      "headline_en": "**112**=police, **119**=disaster/ambulance, **110**=non-emergency civil service. Life threat → **119**, crime → **112**, medical unsure → **1339**.",
+      "primary": ["1339"],
+      "secondary": ["119", "112", "110"],
+      "action_ko": "헷갈리면: 생명·안전 **119**, 범죄 **112**, 병원·응급 여부 **1339**. 정부 민원·비긴급만 **110**.",
+      "action_en": "Life/safety → 119, crime → 112, medical unsure → 1339. Civil complaints only → 110."
+    },
+    "school_violence": {
+      "label_ko": "학교폭력",
+      "label_en": "School violence",
+      "example_questions_ko": [
+        "학교에서 맞았어 어디에 전화?",
+        "학교폭력 신고 번호?",
+        "왕따당하고 있어"
+      ],
+      "keywords_ko": ["학교폭력", "117", "왕따", "학교", "괴롭", "폭력"],
+      "headline_ko": "**이 상황에서는 → 117** (학교폭력 신고). 즉각적 신체 위험·범죄면 **112**.",
+      "headline_en": "**In this situation → 117** (school violence report). **112** if immediate physical danger or crime.",
+      "primary": ["117"],
+      "secondary": ["1388", "112"],
+      "action_ko": "117 신고·상담. 청소년 정서 위기는 1388. 폭력 진행 중이면 112.",
+      "action_en": "117 for reporting. 1388 for youth counseling. 112 if violence in progress."
+    },
+    "utility_electric": {
+      "label_ko": "정전·전기 고장",
+      "label_en": "Power outage / electrical fault",
+      "example_questions_ko": [
+        "정전됐어 어디에 전화?",
+        "전기 고장 신고",
+        "한전 번호?"
+      ],
+      "keywords_ko": ["정전", "전기", "123", "한전", "고장", "불"],
+      "headline_ko": "**이 상황에서는 → 123** (한전). **감전·스파크·화재**면 **119**.",
+      "headline_en": "**In this situation → 123** (KEPCO). **119** for shock, sparks, or fire.",
+      "primary": ["123"],
+      "secondary": ["119"],
+      "action_ko": "123 전기 고장 신고. 감전·화재 징후면 119 우선.",
+      "action_en": "123 for outage/fault. 119 first if shock or fire signs."
+    },
+    "utility_gas": {
+      "label_ko": "가스 누출·가스 사고",
+      "label_en": "Gas leak / gas accident",
+      "example_questions_ko": [
+        "가스 냄새 나 어디에 전화?",
+        "가스 누출 신고",
+        "가스 사고 번호?"
+      ],
+      "keywords_ko": ["가스", "누출", "1544", "냄새", "LPG", "도시가스"],
+      "headline_ko": "**이 상황에서는 → 1544-4500** (가스안전). **냄새 심함·의식 이상·폭발 위험**이면 **119**도.",
+      "headline_en": "**In this situation → 1544-4500** (gas safety). Also **119** if strong smell, unconsciousness, or explosion risk.",
+      "primary": ["1544-4500"],
+      "secondary": ["119"],
+      "action_ko": "1544-4500 신고. 환기·불·스위치 주의. 위험하면 119.",
+      "action_en": "1544-4500. Ventilate, no flames/switches. 119 if dangerous."
+    },
+    "safety_hazard": {
+      "label_ko": "안전 위협 요소 발견",
+      "label_en": "Discovered safety hazard",
+      "example_questions_ko": [
+        "길에 위험한 게 있어",
+        "낙하물·함몰 봤어",
+        "안전신고 어디?"
+      ],
+      "keywords_ko": ["안전", "위험", "낙하", "함몰", "신고", "위험물"],
+      "headline_ko": "**이 상황에서는 → 119** (안전신고·재난). 즉각적 범죄·폭력 위험이면 **112**.",
+      "headline_en": "**In this situation → 119** (safety/disaster report). **112** if immediate crime/violence risk.",
+      "primary": ["119"],
+      "secondary": ["112"],
+      "action_ko": "119 안전신고. 범죄·폭력 상황이면 112.",
+      "action_en": "119 for safety hazards. 112 if crime/violence involved."
+    }
+  }
+}

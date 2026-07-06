@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY server/requirements.txt ./server/requirements.txt
+RUN pip install --no-cache-dir -r server/requirements.txt
+
+COPY modu_emergencybell.py helpers.py hotlines.py nemc_client.py region_parse.py kakao_local.py restroom_parser.py safety_bell.py phrases.py ./
+COPY data/ ./data/
+
+ENV MCP_HOST=0.0.0.0
+ENV MCP_PORT=8000
+
+EXPOSE 8000
+
+CMD ["python", "modu_emergencybell.py"]

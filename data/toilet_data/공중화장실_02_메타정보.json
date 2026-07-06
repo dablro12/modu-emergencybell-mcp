@@ -1,0 +1,43 @@
+{
+  "source_file": "공중화장실정보.csv",
+  "source_encoding": "utf-8",
+  "source_agency": "행정안전부 공중화장실 표준데이터",
+  "total_records": 59757,
+  "data_standard_dates": [
+    [
+      "2024-12-31",
+      5560
+    ],
+    [
+      "2023-12-31",
+      2819
+    ],
+    [
+      "2024-12-20",
+      1750
+    ],
+    [
+      "2025-07-01",
+      1497
+    ],
+    [
+      "2021-12-31",
+      1269
+    ]
+  ],
+  "user_type_definitions": {
+    "general": "일반 이용 가능 (개방 중인 공중화장실)",
+    "wheelchair": "휠체어/장애인용 대변기·소변기 1개 이상",
+    "child": "어린이용 대변기·소변기 1개 이상",
+    "infant_care": "기저귀 교환대 있음",
+    "elderly_safety": "비상벨 설치 (고령자·안전 취약)"
+  },
+  "opening_type_definitions": {
+    "always": "상시 개방",
+    "scheduled": "정시 개방 (개방시간상세 참고)",
+    "irregular": "불규칙 개방",
+    "closed": "미개방 유형",
+    "unknown": "개방시간 정보 없음"
+  },
+  "note": "latitude/longitude는 원본 CSV에 없음. 반경 검색 시 Kakao Local API로 사용자 위치를 geocode 후 region_index로 1차 필터."
+}

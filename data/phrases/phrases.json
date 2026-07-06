@@ -1,0 +1,119 @@
+{
+  "version": "1.0",
+  "disclaimer_ko": "번역·안내용입니다. 응급 시 119·112에 직접 전화하세요.",
+  "disclaimer_en": "For communication help only. Call 119 or 112 directly in emergencies.",
+  "scenarios": {
+    "hospital_visit": {
+      "title_ko": "병원·의원 방문",
+      "title_en": "Clinic / hospital visit",
+      "phrases": [
+        {
+          "ko": "응급실이 아니라 일반 진료를 받고 싶습니다.",
+          "en": "I need a regular clinic visit, not the ER.",
+          "ja": "救急室ではなく、一般診療を受けたいです。",
+          "zh": "我想看普通门诊，不是急诊。"
+        },
+        {
+          "ko": "아이가 열이 있어요. 소아과 진료 가능한가요?",
+          "en": "My child has a fever. Is pediatrics available?",
+          "ja": "子供が熱があります。小児科は診てもらえますか？",
+          "zh": "孩子发烧了，可以看儿科吗？"
+        },
+        {
+          "ko": "외국인입니다. 영어로 진료 가능한가요?",
+          "en": "I am a foreign visitor. Is English available?",
+          "ja": "外国人です。英語で診てもらえますか？",
+          "zh": "我是外国人，可以用英语看病吗？"
+        }
+      ]
+    },
+    "pharmacy_visit": {
+      "title_ko": "약국 방문",
+      "title_en": "Pharmacy visit",
+      "phrases": [
+        {
+          "ko": "처방전 없이 살 수 있는 해열제가 있나요?",
+          "en": "Do you have fever medicine I can buy without a prescription?",
+          "ja": "処方箋なしで買える解熱剤はありますか？",
+          "zh": "有没有不用处方就能买的退烧药？"
+        },
+        {
+          "ko": "이 약 복용 방법을 알려주세요.",
+          "en": "Please explain how to take this medicine.",
+          "ja": "この薬の飲み方を教えてください。",
+          "zh": "请告诉我这种药怎么吃。"
+        }
+      ]
+    },
+    "emergency_symptoms": {
+      "title_ko": "응급 증상 설명",
+      "title_en": "Emergency symptoms",
+      "phrases": [
+        {
+          "ko": "의식이 없습니다. 숨을 쉬지 않는 것 같습니다.",
+          "en": "The person is unconscious and may not be breathing.",
+          "ja": "意識がありません。呼吸をしていないようです。",
+          "zh": "患者失去意识，好像没有呼吸。"
+        },
+        {
+          "ko": "가슴 통증과 호흡 곤란이 있습니다.",
+          "en": "Chest pain and difficulty breathing.",
+          "ja": "胸の痛みと呼吸困難があります。",
+          "zh": "胸口痛，呼吸困难。"
+        },
+        {
+          "ko": "심하게 출혈하고 있습니다.",
+          "en": "Severe bleeding.",
+          "ja": "ひどい出血があります。",
+          "zh": "流血很严重。"
+        }
+      ]
+    },
+    "allergy": {
+      "title_ko": "알레르기·약물",
+      "title_en": "Allergy / medication",
+      "phrases": [
+        {
+          "ko": "페니실린 알레르기가 있습니다.",
+          "en": "I am allergic to penicillin.",
+          "ja": "ペニシリンアレルギーがあります。",
+          "zh": "我对青霉素过敏。"
+        },
+        {
+          "ko": "임신 중입니다.",
+          "en": "I am pregnant.",
+          "ja": "妊娠中です。",
+          "zh": "我怀孕了。"
+        }
+      ]
+    },
+    "call_help": {
+      "title_ko": "도움 요청 (일반)",
+      "title_en": "Ask for help",
+      "phrases": [
+        {
+          "ko": "도와주세요! 응급 상황입니다.",
+          "en": "Help! This is an emergency.",
+          "ja": "助けてください！緊急です。",
+          "zh": "请帮帮我！这是紧急情况。"
+        },
+        {
+          "ko": "119에 전화해 주세요.",
+          "en": "Please call 119 for me.",
+          "ja": "119に電話してください。",
+          "zh": "请帮我打119。"
+        },
+        {
+          "ko": "1339 응급의료 상담 번호를 알려주세요.",
+          "en": "What is the 1339 medical helpline number?",
+          "ja": "1339の救急医療相談番号を教えてください。",
+          "zh": "请告诉我1339医疗咨询电话。"
+        }
+      ]
+    }
+  },
+  "hotlines_reminder": {
+    "ko": "119=화재·구급·구조 | 112=범죄·경찰 | 1339=응급의료 상담(24h) | 1330=관광 통역",
+    "en": "119=fire/ambulance | 112=police | 1339=medical helpline (24h) | 1330=tourist interpretation"
+  }
+}
