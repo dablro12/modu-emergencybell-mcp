@@ -217,13 +217,18 @@ async def find_accessible_facility(
             enrich_result_lines(lines, name=row["name"], item=row, rank=idx)
         lines.append("")
 
-    disabled_rows = await _search_disabled_facilities(
-        place_query=expanded_query,
-        original_query=original_query or display_query,
-        limit=limit,
-        latitude=lat,
-        longitude=lng,
-    )
+    try:
+        disabled_rows = await _search_disabled_facilities(
+            place_query=expanded_query,
+            original_query=original_query or display_query,
+            limit=limit,
+            latitude=lat,
+            longitude=lng,
+        )
+    except Exception as exc:  # noqa: BLE001
+        disabled_rows = []
+        lines.append(f"_장애인 편의시설 API 일시 오류: {exc}_")
+        lines.append("")
     if disabled_rows:
         lines.append(f"### 장애인 편의시설 ({len(disabled_rows)}건)")
         append_overview_map(lines, disabled_rows, title=f"{display_query} 장애인 편의시설")
@@ -244,7 +249,10 @@ async def find_accessible_facility(
                 rank=idx,
             )
         if disabled_rows[0].get("wfcltId"):
-            detail = await _fetch_detail(disabled_rows[0]["wfcltId"])
+            try:
+                detail = await _fetch_detail(disabled_rows[0]["wfcltId"])
+            except Exception:  # noqa: BLE001
+                detail = None
             if detail and detail.get("evalInfo"):
                 lines.append("")
                 lines.append(f"**{disabled_rows[0]['faclNm']} 편의시설**: {detail['evalInfo']}")
