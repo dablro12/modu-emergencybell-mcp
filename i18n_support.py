@@ -147,8 +147,8 @@ def foreign_intent_keywords() -> dict[str, tuple[str, ...]]:
         "wifi_zh": ("无线", "wifi", "网络"),
         "bus_en": ("bus stop", "bus station"),
         "bus_zh": ("公交站", "公交车站", "巴士站"),
-        "vet_en": ("vet", "veterinary", "animal hospital"),
-        "vet_zh": ("动物医院", "宠物医院"),
+        "vet_en": ("vet", "veterinary", "animal hospital", "dog vomit", "cat sick", "pet emergency"),
+        "vet_zh": ("动物医院", "宠物医院", "狗吐", "猫生病"),
         "hotlines_en": ("call", "hotline", "police", "gas leak", "missing child"),
         "hotlines_zh": ("报警", "电话", "煤气", "走失", "失踪"),
     }

@@ -27,6 +27,7 @@ from intent_routing import resolve_effective_place
 from phrases import format_phrase_card
 from safe182_client import search_safe_places
 from safety_bell import find_safety_bells_near
+from health_triage import health_triage
 from subway_facility import find_subway_facility
 
 GUIDE_HEADER = (
@@ -111,7 +112,10 @@ async def emergency_guide(
     if "safety_bell" in intents:
         sections.append(await find_safety_bells_near(place_query=place, radius_m=500, limit=5))
 
-    if "clinic" in intents:
+    if "health_triage" in intents:
+        sections.append(await health_triage(user_request, place_query=place, language=language))
+
+    if "clinic" in intents and "health_triage" not in intents:
         specialty = infer_specialty(user_request)
         if specialty == "vet":
             sections.append(
@@ -130,9 +134,9 @@ async def emergency_guide(
             if time_note:
                 sections.append(f"_{time_note}_")
 
-    if "pharmacy" in intents or (
+    if ("pharmacy" in intents or (
         "clinic" in intents and any(k in user_request for k in ("39도", "열", "fever"))
-    ):
+    )) and "health_triage" not in intents:
         sections.append(
             await find_open_pharmacies_near(
                 place_query=place,
@@ -141,9 +145,9 @@ async def emergency_guide(
             )
         )
 
-    if "emergency_room" in intents or (
+    if ("emergency_room" in intents or (
         "clinic" in intents and any(k in user_request for k in ("39도", "응급", "emergency"))
-    ):
+    )) and "health_triage" not in intents:
         sections.append(await find_emergency_rooms_near(place_query=place, limit=5))
 
     if "subway_locker" in intents:
@@ -193,6 +197,10 @@ async def emergency_guide(
         sections.append(
             await find_outdoor_service(place_query=place, service="vet_hospital", limit=5)
         )
+    if "vet_pharmacy" in intents:
+        sections.append(
+            await find_outdoor_service(place_query=place, service="animal_pharmacy", limit=5)
+        )
 
     if "safe_place" in intents or "실종" in user_request:
         category = "child_safety_house"
@@ -214,6 +222,6 @@ async def emergency_guide(
     if len(sections) <= 4:
         body += (
             "\n\n---\n\n_구체적 조회가 필요하면 `find_nearest_restroom`, "
-            "`find_open_clinic`, `find_subway_facility_tool` 등 개별 Tool을 사용하세요._"
+            "`find_medical_care`, `health_triage_tool`, `find_subway_facility_tool` 등 개별 Tool을 사용하세요._"
         )
     return body

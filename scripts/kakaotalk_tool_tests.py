@@ -20,10 +20,21 @@ from mcp.types import CallToolResult  # noqa: E402
 # (tool, 카톡 한줄, kwargs, 성공 키워드)
 KAKAOTALK_SCENARIOS: list[tuple[str, str, dict, str]] = [
     (
-        "classify_emergency_intent",
-        "혜화골목길 화장실 급함",
-        {"user_request": "야 나 지금 혜화골목길인데 화장실도 급하고 근처 편의점도 없어 뭐부터 해야돼"},
-        "find_nearest_restroom",
+        "emergency_guide_tool",
+        "혜화 화장실 급함",
+        {
+            "user_request": "야 나 지금 혜화골목길인데 화장실도 급하고 근처 편의점도 없어 뭐부터 해야돼",
+        },
+        "화장실",
+    ),
+    (
+        "health_triage_tool",
+        "레고 삼킴",
+        {
+            "user_request": "아이가 레고 블록 삼켰는데 어떻게 하지 서울 마포구",
+            "place_query": "마포구",
+        },
+        "1339",
     ),
     (
         "emergency_guide_tool",
@@ -50,10 +61,10 @@ KAKAOTALK_SCENARIOS: list[tuple[str, str, dict, str]] = [
         "화장실",
     ),
     (
-        "search_restroom",
+        "find_nearest_restroom",
         "해운대 기저귀",
         {
-            "query": "해운대 해수욕장",
+            "place_query": "해운대 해수욕장",
             "user_request": "해운대 해수욕장에서 기저귀 갈만한 데 없을까 아가 데리고 왔어",
             "user_type": "infant_care",
             "limit": 3,
@@ -61,11 +72,12 @@ KAKAOTALK_SCENARIOS: list[tuple[str, str, dict, str]] = [
         "화장실",
     ),
     (
-        "find_open_clinic",
+        "find_medical_care",
         "영등포 토요일 밤",
         {
             "place_query": "영등포구",
             "user_request": "토요일 밤인데 팔에 두드러기 올라서 영등포구 의원 아직 열린 데 있어?",
+            "care_type": "clinic",
             "specialty": "general",
             "treatment_day": "토요일",
         },
@@ -82,21 +94,23 @@ KAKAOTALK_SCENARIOS: list[tuple[str, str, dict, str]] = [
         "보훈",
     ),
     (
-        "find_emergency_room",
+        "find_medical_care",
         "용산 응급실",
         {
             "place_query": "용산구",
             "user_request": "교통사고 목격했는데 용산구 응급실 자리 있나 지금?",
+            "care_type": "emergency_room",
             "limit": 3,
         },
         "응급",
     ),
     (
-        "find_open_pharmacy",
+        "find_medical_care",
         "종로3가 일요일 약국",
         {
             "place_query": "종로3가",
             "user_request": "일요일 아침인데 두통약 살 약국 종로3가 근처 없냐",
+            "care_type": "pharmacy",
             "treatment_day": "일요일",
             "limit": 3,
         },

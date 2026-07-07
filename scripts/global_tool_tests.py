@@ -20,11 +20,11 @@ from mcp.types import CallToolResult  # noqa: E402
 # (tool, lang, message, kwargs, expect)
 GLOBAL_SCENARIOS: list[tuple[str, str, str, dict, str]] = [
     (
-        "classify_emergency_intent",
+        "health_triage_tool",
         "EN",
-        "Urgent restroom near COEX",
-        {"user_request": "Urgent restroom near COEX — please help!"},
-        "find_nearest_restroom",
+        "Swallowed LEGO",
+        {"user_request": "My child swallowed a LEGO brick in Mapo — what should I do?"},
+        "1339",
     ),
     (
         "emergency_guide_tool",
@@ -57,11 +57,11 @@ GLOBAL_SCENARIOS: list[tuple[str, str, str, dict, str]] = [
         "화장실",
     ),
     (
-        "search_restroom",
+        "find_nearest_restroom",
         "EN",
         "Haeundae diaper",
         {
-            "query": "Haeundae Beach",
+            "place_query": "Haeundae Beach",
             "user_request": "Need a place to change diapers at Haeundae Beach with my baby",
             "user_type": "infant_care",
             "limit": 3,
@@ -69,23 +69,25 @@ GLOBAL_SCENARIOS: list[tuple[str, str, str, dict, str]] = [
         "화장실",
     ),
     (
-        "find_open_clinic",
+        "find_medical_care",
         "EN",
         "Yeongdeungpo Saturday",
         {
             "place_query": "Yeongdeungpo-gu",
             "user_request": "Saturday night rash on my arm — any clinic open in Yeongdeungpo?",
+            "care_type": "clinic",
             "limit": 3,
         },
         "의원",
     ),
     (
-        "find_open_pharmacy",
+        "find_medical_care",
         "EN",
         "Jongno Sunday",
         {
             "place_query": "Jongno 3-ga",
             "user_request": "Sunday morning headache — pharmacy near Jongno 3-ga?",
+            "care_type": "pharmacy",
             "limit": 3,
         },
         "약국",
@@ -137,11 +139,11 @@ GLOBAL_SCENARIOS: list[tuple[str, str, str, dict, str]] = [
         "버스",
     ),
     (
-        "classify_emergency_intent",
+        "emergency_guide_tool",
         "ZH",
         "明洞厕所",
         {"user_request": "明洞圣堂附近哪里有厕所？很急！"},
-        "find_nearest_restroom",
+        "화장실",
     ),
     (
         "find_nearest_restroom",
@@ -151,12 +153,13 @@ GLOBAL_SCENARIOS: list[tuple[str, str, str, dict, str]] = [
         "화장실",
     ),
     (
-        "find_open_pharmacy",
+        "find_medical_care",
         "ZH",
         "江南药店",
         {
             "place_query": "江南",
             "user_request": "江南站附近有药店吗？头疼",
+            "care_type": "pharmacy",
             "limit": 3,
         },
         "약국",

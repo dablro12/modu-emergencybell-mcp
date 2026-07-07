@@ -86,6 +86,33 @@ VETERAN_KEYWORDS = (
     "veteran",
 )
 
+PET_KEYWORDS = (
+    "강아지",
+    "고양이",
+    "반려동물",
+    "반려견",
+    "반려묘",
+    "애완동물",
+    "애완견",
+    "펫",
+    "동물병원",
+    "동물약국",
+    "수의",
+    "pet",
+    "puppy",
+    "kitten",
+    "dog",
+    "cat",
+)
+
+PET_SYMPTOM_KEYWORDS = (
+    "토했",
+    "토함",
+    "구토",
+    "vomit",
+    "vomiting",
+)
+
 SERVICE_ALIASES_EXTRA: dict[str, str] = {
     "locker": "subway_locker",
     "luggage": "subway_locker",
@@ -177,6 +204,19 @@ def is_valid_wfclt_id(value: str | None) -> bool:
     }:
         return False
     return bool(WFCLT_ID_PATTERN.match(text) or (text[0].isdigit() and "-" in text))
+
+
+def is_pet_care_query(text: str) -> bool:
+    lowered = (text or "").lower()
+    if any(k in text or k in lowered for k in PET_KEYWORDS):
+        return True
+    if any(k in text or k in lowered for k in PET_SYMPTOM_KEYWORDS):
+        if any(k in text or k in lowered for k in ("강아지", "고양이", "반려", "애완", "pet", "dog", "cat", "동물")):
+            return True
+    fk = foreign_intent_keywords()
+    if any(k in lowered for k in fk.get("vet_en", ()) + fk.get("vet_zh", ())):
+        return True
+    return False
 
 
 def infer_user_type_from_text(text: str) -> str | None:
@@ -403,16 +443,49 @@ def classify_intents(text: str) -> list[str]:
     ):
         add("crime_stats")
     if any(k in text or k in lowered for k in ("약국", "pharmacy", *fk["pharmacy_en"], *fk["pharmacy_zh"])):
-        add("pharmacy")
+        if any(k in text for k in ("동물약국", "반려동물 약", "pet pharmacy")):
+            add("vet_pharmacy")
+        else:
+            add("pharmacy")
+    pet_query = is_pet_care_query(text)
+    if pet_query:
+        add("vet")
+        if any(k in text for k in ("동물약국", "pet pharmacy")):
+            add("vet_pharmacy")
+    if any(
+        k in text or k in lowered
+        for k in (
+            "레고",
+            "본드",
+            "접착제",
+            "삼켰",
+            "먹었어",
+            "오복용",
+            "잘못 먹",
+            "틀린 약",
+            "진료과",
+            "어떤 과",
+            "어디 과",
+            "머리 아",
+            "목이 아",
+            "목이 쑤",
+            "두통",
+            "어떤 약",
+            "약 먹어야",
+            "응급처치",
+            "이물",
+        )
+    ) and not pet_query:
+        add("health_triage")
     if any(
         k in text or k in lowered
         for k in ("응급실", "병상", "emergency room", *fk["emergency_en"], *fk["emergency_zh"])
-    ):
+    ) and not pet_query:
         add("emergency_room")
     if any(
         k in text or k in lowered
         for k in ("소아과", "병원", "의원", "진료", "clinic", "내과", "39度", "39도", "열", "fever", *fk["clinic_en"], *fk["clinic_zh"])
-    ) and not any(k in text for k in VETERAN_KEYWORDS):
+    ) and not any(k in text for k in VETERAN_KEYWORDS) and not pet_query:
         add("clinic")
     if any(
         k in text or k in lowered
@@ -451,6 +524,8 @@ def classify_intents(text: str) -> list[str]:
 
 
 def infer_specialty(text: str) -> str:
+    if is_pet_care_query(text):
+        return "vet"
     if any(k in text for k in VETERAN_KEYWORDS):
         return "veteran"
     if any(k in text for k in ("소아", "아이", "pediatric")):

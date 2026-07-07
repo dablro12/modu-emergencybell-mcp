@@ -13,11 +13,8 @@ from helpers import (
     search_restrooms_by_query,
 )
 from hotlines import format_emergency_hotlines
-from nemc_client import (
-    find_emergency_rooms_near,
-    find_open_clinics_near,
-    find_open_pharmacies_near,
-)
+from health_triage import health_triage
+from medical_care import find_medical_care as find_medical_care_near
 from phrases import format_phrase_card
 from accessible_facility_client import find_accessible_facility
 from outdoor_services import find_outdoor_service
@@ -26,23 +23,24 @@ from safety_bell import find_safety_bells_near
 from subway_facility import find_subway_facility
 from emergency_guide import emergency_guide
 from veteran_hospital import find_veteran_hospitals_near
-from intent_routing import classify_and_route, resolve_effective_place
+from intent_routing import resolve_effective_place
 from mcp_prompts import register_prompts
 from mcp_tool_result import install_tool_error_wrapping
-from place_resolver import resolve_place_context
 from place_context import (
+    infer_specialty,
     infer_user_type_from_text,
+    is_pet_care_query,
     normalize_safe_category,
     normalize_situation_tag,
     normalize_specialty,
 )
+from tool_descriptions import tool_description
 
 load_dotenv()
 
 MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
 
-# PlayMCP 식별자 · description 병기 (영문+국문)
 SERVICE_DISPLAY = "modu-emergencybell(모두의비상벨)"
 MCP_IDENTIFY = "modu-emergencybell"
 
@@ -59,46 +57,10 @@ TOOL_ANNOTATIONS = {
 }
 
 
-TOOL_WHEN_MULTI = (
-    "Multiple intents or unclear routing → call `classify_emergency_intent` first, "
-    "or use `emergency_guide_tool` for combined answers."
-)
-
-
 @mcp.tool(
     annotations={
         **TOOL_ANNOTATIONS,
-        "title": "Classify Intent And Route Tools",
-    }
-)
-async def classify_emergency_intent(
-    user_request: str,
-    place_query: str | None = None,
-) -> str:
-    f"""Read-only routing guide for {SERVICE_DISPLAY} — call when unsure which tool to use.
-
-  WHEN TO USE:
-  - User message mixes several needs (e.g. restroom + safety + pharmacy).
-  - You are about to call a specialized tool but location/intent is ambiguous.
-  - PlayMCP picked the wrong tool or left place_query empty.
-
-  WHEN NOT TO USE:
-  - Single clear intent with known place → call the specific tool directly.
-  - User already answered a clarification question.
-
-  Returns: detected intents, recommended tool names, server-extracted place hint,
-  and parameter tips. Does NOT fetch live data.
-
-  Always pass the user's **full original sentence** in user_request.
-  Example: user_request="명동성당쪽인데 급똥이야 화장실 알려줘"
-  """
-    return await classify_and_route(user_request, place_query=place_query)
-
-
-@mcp.tool(
-    annotations={
-        **TOOL_ANNOTATIONS,
-        "title": "Emergency Guide (Natural Language)",
+        "title": "Emergency Guide (Start Here)",
     }
 )
 async def emergency_guide_tool(
@@ -106,24 +68,39 @@ async def emergency_guide_tool(
     place_query: str | None = None,
     language: str = "ko",
 ) -> str:
-    f"""**Recommended first tool** for natural-language emergency help via {SERVICE_DISPLAY}.
+    f"""**Recommended first tool** for natural-language help via {SERVICE_DISPLAY}.
 
-    Parses Korean/English requests and chains the right backends automatically:
-    hotlines, restrooms, clinics, pharmacies, ER beds, safety bells, subway lockers/ATM,
-    accessible facilities, Safe182 places, phrase cards.
+    Parses Korean/English and chains hotlines, restrooms, clinics, pharmacies, ER beds,
+    safety bells, health triage, subway, accessible facilities, Safe182, phrase cards.
 
-    WHEN TO USE: multi-intent or conversational requests (2+ needs in one message).
-    WHEN NOT TO USE: single clear task — use the specific tool (faster).
-
-    Examples: `집에서 가스 냄새`, `종로구 창신동 약국`, `연산9동 내과`, `강남역 물품보관함`,
-    `명동 휠체어 화장실`, `명동성당쪽 급똥`, `새벽 아이 39도`, `아이 실종 신고`,
-    `강남구 밤에 안전할까`, `강남역 버스정류장`.
-
-    user_request: user's **full original message** (required).
-    place_query: optional region hint when location is separate from user_request.
-    {TOOL_WHEN_MULTI}
+    Examples: `명동성당 급똥+밤에 안전`, `새벽 아이 39도`, `레고 삼켰어`, `신설동역 축구 후 두통`.
     """
     return await emergency_guide(user_request, place_query=place_query, language=language)
+
+
+@mcp.tool(
+    annotations={
+        **TOOL_ANNOTATIONS,
+        "title": "Health Triage And Specialty Guide",
+    }
+)
+async def health_triage_tool(
+    user_request: str,
+    place_query: str | None = None,
+    language: str = "ko",
+) -> str:
+    f"""Symptom·poison·wrong-drug triage via {SERVICE_DISPLAY} (HIRA disease + MFDS e약은요 + NEMC).
+
+    USE for: child swallowed LEGO/glue, wrong medication, which department/hospital,
+    headache+sore throat after exercise, what medicine (public info only — not prescription).
+    """
+    base = tool_description(
+        f"Health triage for {SERVICE_DISPLAY}. Returns urgency, hotlines, recommended department, "
+        "nearby clinics/pharmacies/ER. Not a diagnosis.",
+        "health_triage_tool",
+    )
+    _ = base
+    return await health_triage(user_request, place_query=place_query, language=language)
 
 
 @mcp.tool(
@@ -137,17 +114,8 @@ async def get_emergency_hotlines(
     situation: str | None = None,
     language: str = "ko",
 ) -> str:
-    f"""Tells the user which emergency number to call for their situation via {SERVICE_DISPLAY}.
-
-    Use when the user asks where to call (e.g. 119 vs 1339, restroom wall button vs 119,
-    child fever, gas leak). Returns prioritized hotlines and next steps. Does NOT dial.
-
-    situation_description: user's situation in their own words (Korean or English).
-    situation: optional pre-classified tag (life_threatening, medical_urgent, restroom_help,
-      foreign_visitor, poison, police, mental_crisis, school_violence, utility_electric,
-      utility_gas, safety_hazard, unsure).
-    language: ko or en for the response text.
-    """
+    f"""Emergency numbers (119/112/1339) for the user's situation via {SERVICE_DISPLAY}."""
+    _ = tool_description("Hotline guidance only — does not dial.", "get_emergency_hotlines")
     return format_emergency_hotlines(
         situation_description,
         situation=normalize_situation_tag(situation),
@@ -171,16 +139,8 @@ async def find_nearest_restroom(
     open_now: bool = False,
     limit: int = 5,
 ) -> str:
-    f"""Finds nearest public restrooms via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: restroom / toilet / 급똥 / 배변 — single intent only.
-    WHEN NOT TO USE: multi-intent → `emergency_guide_tool`.
-
-    Pass **user_request** with the user's full sentence when possible.
-    place_query: landmark or area only (명동성당, 홍대, 강남역) — NOT words like 급똥/화장실.
-    Coordinates optional when client has GPS.
-    user_type: wheelchair, child, infant_care, elderly_safety, general (auto from text).
-    """
+    f"""Public restrooms via {SERVICE_DISPLAY}. Replaces deprecated search_restroom."""
+    _ = tool_description("Single-intent restroom search.", "find_nearest_restroom")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
@@ -218,8 +178,7 @@ async def find_nearest_restroom(
     if latitude is None or longitude is None:
         return (
             "화장실을 찾으려면 **장소명** 또는 **user_request(원문)** 를 알려주세요.\n"
-            "예: `user_request=\"명동성당쪽 급똥\"` 또는 `place_query=\"강남역\"`.\n"
-            "의도가 복합적이면 `emergency_guide_tool` 또는 `classify_emergency_intent`를 사용하세요."
+            "복합 질문은 `emergency_guide_tool`을 사용하세요."
         )
 
     restrooms = await fetch_restrooms(
@@ -236,80 +195,38 @@ async def find_nearest_restroom(
 @mcp.tool(
     annotations={
         **TOOL_ANNOTATIONS,
-        "title": "Search Restroom By Place",
+        "title": "Find Clinic Pharmacy Or ER",
     }
 )
-async def search_restroom(
-    query: str,
-    user_request: str | None = None,
-    radius: int = 500,
-    user_type: str = "general",
-    open_now: bool = False,
-    limit: int = 5,
-) -> str:
-    f"""Searches public restrooms near a place name or district via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: alias of find_nearest_restroom with required query string.
-    Pass user_request (full sentence) when query might omit the place name.
-
-    Examples: COEX, Gangnam Station, 마포구, 명동 휠체어 화장실.
-    user_type: wheelchair | infant_care | elderly_safety | child | general.
-    """
-    effective_place, _ = await resolve_effective_place(
-        place_query=query,
-        user_request=user_request,
-        fallback=query,
-    )
-    combined_text = " ".join(part for part in (user_request or "", query, effective_place) if part)
-    effective_type = user_type
-    if user_type == "general":
-        inferred = infer_user_type_from_text(combined_text)
-        if inferred:
-            effective_type = inferred
-    restrooms, coords = await search_restrooms_by_query(
-        effective_place,
-        radius,
-        user_type=effective_type if effective_type != "general" else None,
-        open_now=open_now,
-        limit=limit,
-    )
-    return format_restroom_list(restrooms, query=effective_place, coords_hint=coords)
-
-
-@mcp.tool(
-    annotations={
-        **TOOL_ANNOTATIONS,
-        "title": "Find Open Clinic",
-    }
-)
-async def find_open_clinic(
+async def find_medical_care(
     place_query: str,
     user_request: str | None = None,
-    specialty: str = "pediatric",
+    care_type: str = "all",
+    specialty: str = "general",
     treatment_day: str | None = None,
+    pharmacy_name: str | None = None,
     limit: int = 5,
 ) -> str:
-    f"""Lists hospitals or clinics open on a given day near a region via {SERVICE_DISPLAY}.
+    f"""Clinics, pharmacies, or ER beds near a region via {SERVICE_DISPLAY} (NEMC).
 
-    WHEN TO USE: 병원·의원·진료·소아·내과 (people, not animals).
-    WHEN NOT TO USE: 동물병원 → find_outdoor_service_tool(vet_hospital); 보훈 → find_veteran_hospital.
-
-    place_query: 동·역·구. Pass user_request (full sentence) to recover place from text.
-    treatment_day: 월~일, 공휴일, 2026-05-05, or omit for today.
-    specialty: pediatric, internal, general, veteran.
+    Merges find_open_clinic + find_open_pharmacy + find_emergency_room.
+    care_type: all | clinic | pharmacy | emergency_room.
     """
+    _ = tool_description("People medical facilities only.", "find_medical_care")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
         fallback=place_query,
     )
-    specialty = normalize_specialty(specialty)
-    if specialty == "veteran":
-        return await find_veteran_hospitals_near(place_query=effective_place, limit=limit)
-    return await find_open_clinics_near(
+    combined = " ".join(part for part in (user_request or "", place_query, effective_place) if part)
+    inferred = infer_specialty(combined) if specialty == "general" else specialty
+    return await find_medical_care_near(
         place_query=effective_place,
-        specialty=specialty,
+        user_request=user_request,
+        care_type=care_type,
+        specialty=normalize_specialty(inferred),
         treatment_day=treatment_day,
+        pharmacy_name=pharmacy_name,
         limit=limit,
     )
 
@@ -326,77 +243,34 @@ async def find_veteran_hospital(
     hospital_type: str | None = None,
     limit: int = 5,
 ) -> str:
-    f"""Finds **보훈의료 위탁병원** (국가보훈부) near a region via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: 국가유공자·보훈·위탁병원 keywords in user message.
-    WHEN NOT TO USE: general night clinic → find_open_clinic; do not invent hospital names.
-
-    place_query + optional user_request (full sentence) for place recovery.
-    hospital_type optional: 종합병원, 요양병원, 의원.
-    """
+    f"""국가보훈부 위탁병원 near a region via {SERVICE_DISPLAY}."""
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
         fallback=place_query,
     )
+    combined = " ".join(part for part in (user_request or "", place_query, effective_place) if part)
+    if hospital_type and "animal" in hospital_type.lower():
+        return (
+            "⚠️ 동물병원은 `find_outdoor_service_tool(service=vet_hospital)`을 사용하세요.\n\n"
+            + await find_outdoor_service(
+                place_query=effective_place,
+                service="vet_hospital",
+                limit=limit,
+            )
+        )
+    if is_pet_care_query(combined):
+        return (
+            "⚠️ 반려동물은 보훈 위탁병원이 아닙니다.\n\n"
+            + await find_outdoor_service(
+                place_query=effective_place,
+                service="vet_hospital",
+                limit=limit,
+            )
+        )
     return await find_veteran_hospitals_near(
         place_query=effective_place,
         hospital_type=hospital_type,
-        limit=limit,
-    )
-
-
-@mcp.tool(
-    annotations={
-        **TOOL_ANNOTATIONS,
-        "title": "Find Emergency Room",
-    }
-)
-async def find_emergency_room(
-    place_query: str,
-    user_request: str | None = None,
-    limit: int = 5,
-) -> str:
-    f"""Shows ER real-time bed availability by district via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: 응급실·병상·life-threatening symptoms (information only — call 119).
-    place_query + user_request for region. NEMC open-data API.
-    """
-    effective_place, _ = await resolve_effective_place(
-        place_query=place_query,
-        user_request=user_request,
-        fallback=place_query,
-    )
-    return await find_emergency_rooms_near(place_query=effective_place, limit=limit)
-
-
-@mcp.tool(
-    annotations={
-        **TOOL_ANNOTATIONS,
-        "title": "Find Open Pharmacy",
-    }
-)
-async def find_open_pharmacy(
-    place_query: str,
-    user_request: str | None = None,
-    treatment_day: str | None = None,
-    pharmacy_name: str | None = None,
-    limit: int = 5,
-) -> str:
-    f"""Lists pharmacies open on a given day near a region via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: 약국·심야약국·fever medicine context.
-    place_query + user_request. treatment_day: 월~일, 공휴일, or omit for today.
-    """
-    effective_place, _ = await resolve_effective_place(
-        place_query=place_query,
-        user_request=user_request,
-        fallback=place_query,
-    )
-    return await find_open_pharmacies_near(
-        place_query=effective_place,
-        treatment_day=treatment_day,
-        pharmacy_name=pharmacy_name,
         limit=limit,
     )
 
@@ -416,12 +290,8 @@ async def find_safety_bell(
     place_type: str | None = None,
     limit: int = 5,
 ) -> str:
-    f"""Finds crime-prevention outdoor safety bells near a place via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: 안전비상벨·치안·범죄·야간 안전 (NOT restroom wall buttons).
-    Pass user_request (full sentence) and/or place_query. Geocoding is internal.
-    Includes regional crime statistics when district resolves.
-    """
+    f"""Crime-prevention outdoor safety bells via {SERVICE_DISPLAY}."""
+    _ = tool_description("Street safety bells — not restroom wall buttons.", "find_safety_bell")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
@@ -447,12 +317,7 @@ async def get_phrase_card(
     scenario: str = "hospital_visit",
     language: str = "en",
 ) -> str:
-    f"""Returns show-to-staff phrase cards for foreign visitors via {SERVICE_DISPLAY}.
-
-    Scenarios: hospital_visit, pharmacy_visit, pharmacy_allergy_check, emergency_symptoms,
-    allergy, call_help. Use pharmacy_allergy_check when user asks if a medicine causes allergy.
-    Languages: ko, en, ja, zh.
-    """
+    f"""Show-to-staff phrase cards for foreign visitors via {SERVICE_DISPLAY}."""
     return format_phrase_card(scenario=scenario, language=language)
 
 
@@ -468,12 +333,7 @@ async def find_subway_facility_tool(
     facility_type: str = "all",
     limit: int = 5,
 ) -> str:
-    f"""Finds subway coin lockers and accessibility (elevator, wheelchair lift) via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: 물품보관함·짐맡기기·지하철 엘리베이터 at a **station**.
-    station_query: 역 이름 (강남역). user_request helps extract station from full sentence.
-    facility_type: all | locker | accessibility.
-    """
+    f"""Subway lockers and accessibility (elevator, wheelchair lift) via {SERVICE_DISPLAY}."""
     from place_context import extract_place_from_text
 
     station = station_query
@@ -497,11 +357,7 @@ async def find_safe_place(
     radius_m: int = 1000,
     limit: int = 5,
 ) -> str:
-    f"""Finds child safety houses and other Safe182 map facilities via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: 안전지킴이집·쉼터·실종 아동 (also call 112/182).
-    place_query + user_request. category: child_safety_house, elderly, youth, all.
-    """
+    f"""Safe182 child safety houses and shelters via {SERVICE_DISPLAY}."""
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
@@ -528,12 +384,7 @@ async def find_accessible_facility_tool(
     include_subway: bool = True,
     limit: int = 5,
 ) -> str:
-    f"""Finds wheelchair-accessible restrooms, subway lifts, and disabled-access facilities via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: 휠체어·장애인·엘리베이터·접근성 (single area search).
-    place_query + user_request. landmarks OK (명동성당, COEX, 홍대).
-    facility_id: wfcltId only — NOT wheelchair_restroom / elevator strings.
-    """
+    f"""Wheelchair restrooms and disabled-access facilities via {SERVICE_DISPLAY}."""
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
@@ -561,13 +412,8 @@ async def find_outdoor_service_tool(
     wheelchair_accessible: bool = False,
     limit: int = 5,
 ) -> str:
-    f"""Finds subway-station ATM, free WiFi, vet hospitals, or bus stops via {SERVICE_DISPLAY}.
-
-    WHEN TO USE: wifi | atm | bus_stop | vet_hospital — one service per call.
-    place_query + user_request (landmarks OK: 홍대, 명동성당).
-    service: atm | wifi | vet_hospital | bus_stop (locker → find_subway_facility_tool).
-    station_query: station/stop name hint for atm or bus_stop.
-    """
+    f"""ATM, WiFi, vet hospitals, animal pharmacies, bus stops via {SERVICE_DISPLAY}."""
+    _ = tool_description("Outdoor services including pets.", "find_outdoor_service_tool")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,

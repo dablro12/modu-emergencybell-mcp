@@ -22,7 +22,7 @@ FAILURE_MARKERS = (
 )
 
 # 라우팅·핫라인은 '찾지 못했습니다'가 없어도 정상 응답
-NO_ERROR_TOOLS = frozenset({"classify_emergency_intent", "get_emergency_hotlines", "get_phrase_card"})
+NO_ERROR_TOOLS = frozenset({"get_emergency_hotlines", "get_phrase_card"})
 
 
 def is_failure_text(text: str) -> bool:

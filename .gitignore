@@ -13,6 +13,7 @@ build/
 # Raw source data (processed JSON is committed; rebuild via scripts/)
 data/**/*.csv
 !data/sources/*.csv
+!data/animal/*.csv
 data/**/raw/
 data/hotlines/119_*/
 data/disability/
@@ -21,6 +22,8 @@ data/disability/
 data/toilet_data/공중화장실_01_전체레코드.json
 data/bus/bus_stop_index.json
 data/medical/veteran_hospital_index.json
+data/animal/animal_hospital_index.json
+data/animal/animal_pharmacy_index.json
 
 # Local / dev only
 .workspace/

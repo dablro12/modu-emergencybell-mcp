@@ -1,0 +1,59 @@
+"""PlayMCP Tool description 공통 블록 (CHAINS WITH / NEVER)."""
+
+from __future__ import annotations
+
+TOOL_CHAIN_FOOTER = """
+PARAMETERS:
+- user_request = user's **full original sentence** (Korean/English).
+- place_query = landmark or district ONLY (명동역, 서울 마포구), NOT symptoms.
+
+IF 2+ intents in one message → use `emergency_guide_tool` instead.
+""".strip()
+
+CHAINS = {
+    "emergency_guide_tool": """
+USE FIRST when: 2+ intents OR 급똥+안전, 열+약국+응급실, 실종+신고, 증상+어디가+약.
+Replaces manual chains of hotlines + restroom + pharmacy + ER + safety_bell + health triage.
+NEVER: single clear task — use the specific tool (faster).
+""".strip(),
+    "health_triage_tool": """
+USE FIRST when: poison/ingestion (레고·본드·오복용), wrong drug, symptom→which department,
+  fever+which hospital, headache+sore throat after exercise, what medicine to take.
+CHAINS WITH: get_emergency_hotlines (119 vs 1339), find_medical_care (nearby clinics).
+NEVER: diagnosis or prescription — triage + public data only.
+""".strip(),
+    "get_emergency_hotlines": """
+CHAINS WITH: find_emergency_room (fall, chest pain), find_medical_care (fever unsure),
+  find_safe_place (missing child), find_nearest_restroom user_type=elderly_safety (wall bell).
+NEVER: replaces location search — hotlines only tell WHO to call.
+""".strip(),
+    "find_medical_care": """
+CHAINS WITH: get_emergency_hotlines when symptoms severe or 119 vs 1339 confusion;
+  health_triage_tool when symptom→department mapping needed first.
+care_type: clinic | pharmacy | emergency_room | all (default all for fever/night).
+NEVER: animals → find_outdoor_service_tool(vet_hospital); 보훈 → find_veteran_hospital.
+""".strip(),
+    "find_nearest_restroom": """
+CHAINS WITH: get_emergency_hotlines if 비상벨/벽 버튼/119 confusion.
+user_type: wheelchair | infant_care | elderly_safety (wall bell, NOT outdoor safety bell).
+NEVER: find_safety_bell — that is street crime-prevention bell.
+""".strip(),
+    "find_safety_bell": """
+CHAINS WITH: crime_stats included when district resolves.
+NEVER: restroom wall button → find_nearest_restroom elderly_safety.
+""".strip(),
+    "find_outdoor_service_tool": """
+CHAINS WITH: get_emergency_hotlines for pet emergency.
+service=vet_hospital | animal_pharmacy for pets.
+NEVER: find_medical_care or find_emergency_room for animals.
+""".strip(),
+}
+
+
+def tool_description(base: str, chain_key: str) -> str:
+    chain = CHAINS.get(chain_key, "")
+    parts = [base.strip()]
+    if chain:
+        parts.append(chain)
+    parts.append(TOOL_CHAIN_FOOTER)
+    return "\n\n".join(parts)

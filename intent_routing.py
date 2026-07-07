@@ -18,9 +18,10 @@ INTENT_TOOL_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("hotlines", "get_emergency_hotlines", "119/112/1339 등 신고번호 안내"),
     ("crime_stats", "find_safety_bell", "치안·범죄통계·야간 안전(안전비상벨 포함)"),
     ("safety_bell", "find_safety_bell", "범죄예방 안전비상벨 위치"),
-    ("pharmacy", "find_open_pharmacy", "약국·심야약국"),
-    ("clinic", "find_open_clinic", "병원·의원·진료"),
-    ("emergency_room", "find_emergency_room", "응급실 병상 현황"),
+    ("health_triage", "health_triage_tool", "증상·중독·오복용·진료과 안내"),
+    ("clinic", "find_medical_care", "병원·의원·진료"),
+    ("pharmacy", "find_medical_care", "약국·심야약국"),
+    ("emergency_room", "find_medical_care", "응급실 병상 현황"),
     ("veteran_hospital", "find_veteran_hospital", "보훈 위탁병원"),
     ("accessible", "find_accessible_facility_tool", "휠체어·장애인 편의시설"),
     ("subway_locker", "find_subway_facility_tool", "지하철 물품보관함"),
@@ -28,6 +29,7 @@ INTENT_TOOL_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("wifi", "find_outdoor_service_tool", "무료 WiFi (service=wifi)"),
     ("bus_stop", "find_outdoor_service_tool", "버스정류장 (service=bus_stop)"),
     ("vet", "find_outdoor_service_tool", "동물병원 (service=vet_hospital)"),
+    ("vet_pharmacy", "find_outdoor_service_tool", "동물약국 (service=animal_pharmacy)"),
     ("safe_place", "find_safe_place", "아동안전지킴이집·Safe182"),
     ("phrase", "get_phrase_card", "외국인용 문장 카드"),
 )
@@ -124,12 +126,15 @@ def format_intent_routing(
     lines.append("- 개별 Tool 호출 시 **`user_request`에 원문 전체** + `place_query`에 장소만 병행 전달.")
     lines.append("- `place_query`만 넣지 말 것: `화장실`, `급똥`, `와이파이` 같은 의도어는 장소가 아님.")
     lines.append("- `find_accessible_facility_tool`의 `facility_id`는 wfcltId 숫자형만 (wheelchair_restroom 금지).")
-    lines.append("- 동물병원 → `find_outdoor_service_tool(service=vet_hospital)`, 사람 병원 → `find_open_clinic`.")
+    lines.append("- 동물병원 → `find_outdoor_service_tool(service=vet_hospital)`, 동물약국 → `service=animal_pharmacy`.")
+    lines.append("- 사람 병원·응급실·약국 → `find_medical_care` (care_type: clinic|pharmacy|emergency_room|all).")
+    lines.append("- 증상·중독·오복용·진료과 → `health_triage_tool` 먼저.")
+    lines.append("- 반려동물(강아지·고양이)에는 `find_medical_care`·`find_veteran_hospital` 사용 금지.")
 
     specialty = infer_specialty(user_request)
     user_type = infer_user_type_from_text(user_request)
     if specialty != "general":
-        lines.append(f"- 추론 specialty: `{specialty}` → `find_open_clinic`")
+        lines.append(f"- 추론 specialty: `{specialty}` → `find_medical_care`")
     if user_type:
         lines.append(f"- 추론 restroom user_type: `{user_type}`")
 
