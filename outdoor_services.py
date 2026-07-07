@@ -34,12 +34,17 @@ async def find_outdoor_service(
     *,
     place_query: str,
     service: str = "atm",
+    station_query: str | None = None,
     wheelchair_accessible: bool = False,
     limit: int = 5,
 ) -> str:
     kind = normalize_service(service)
     if kind == "atm":
-        return search_subway_atms(station_query=place_query, limit=limit)
+        return await search_subway_atms(
+            place_query=place_query,
+            station_query=station_query,
+            limit=limit,
+        )
     if kind == "wifi":
         rows = await search_free_wifi(place_query=place_query, limit=limit)
         return format_wifi_list(rows, query=place_query)

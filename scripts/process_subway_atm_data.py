@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -113,6 +114,55 @@ def merge_station(stations: dict[str, dict], row: dict[str, str]) -> dict:
     return entry
 
 
+def _collect_station_coords() -> dict[str, list[tuple[float, float]]]:
+    coords: dict[str, list[tuple[float, float]]] = defaultdict(list)
+    subway_index = SUBWAY_DIR / "subway_index.json"
+    if subway_index.exists():
+        data = json.loads(subway_index.read_text(encoding="utf-8"))
+        for station in data.get("stations") or []:
+            for lift in station.get("lifts") or []:
+                point = lift.get("coords") or {}
+                if point.get("latitude") and point.get("longitude"):
+                    coords[normalize_station(station.get("id", ""))].append(
+                        (float(point["latitude"]), float(point["longitude"]))
+                    )
+
+    for path in SUBWAY_DIR.glob("*리프트*"):
+        with path.open(encoding="cp949", errors="replace") as f:
+            for row in csv.DictReader(f):
+                name = row.get("지하철역명") or row.get("역명") or ""
+                wkt = row.get("노드 WKT", "")
+                if wkt.startswith("POINT(") and wkt.endswith(")"):
+                    parts = wkt[6:-1].split()
+                    if len(parts) == 2:
+                        lng, lat = float(parts[0]), float(parts[1])
+                        coords[normalize_station(name)].append((lat, lng))
+
+    try:
+        from landmarks import LANDMARK_COORDS
+
+        for name, (lat, lng) in LANDMARK_COORDS.items():
+            if name.endswith("역"):
+                coords[normalize_station(name)].append((lat, lng))
+    except ImportError:
+        pass
+
+    return coords
+
+
+def _attach_coordinates(stations: list[dict]) -> None:
+    coord_map = _collect_station_coords()
+    attached = 0
+    for station in stations:
+        points = coord_map.get(station["id"], [])
+        if not points:
+            continue
+        station["latitude"] = round(sum(p[0] for p in points) / len(points), 6)
+        station["longitude"] = round(sum(p[1] for p in points) / len(points), 6)
+        attached += 1
+    return None
+
+
 def build_index(rows: list[dict[str, str]]) -> dict:
     stations: dict[str, dict] = {}
     for row in rows:
@@ -128,11 +178,16 @@ def build_index(rows: list[dict[str, str]]) -> dict:
         ).lower()
         station_list.append(entry)
 
+    _attach_coordinates(station_list)
+
     return {
         "meta": {
             "source_csv": CSV_NAME,
             "station_count": len(station_list),
             "atm_count": sum(len(s["atms"]) for s in station_list),
+            "stations_with_coords": sum(
+                1 for s in station_list if s.get("latitude") is not None
+            ),
         },
         "stations": station_list,
     }

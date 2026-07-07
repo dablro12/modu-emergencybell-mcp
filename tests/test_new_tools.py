@@ -84,7 +84,9 @@ def test_subway_atm_index_loaded():
 def test_search_subway_atm_gangnam():
     from subway_atm import search_subway_atms
 
-    text = search_subway_atms("강남역", limit=3)
+    import asyncio
+
+    text = asyncio.run(search_subway_atms("강남역", station_query="강남역", limit=3))
     assert "강남" in text
     assert "ATM" in text or "효성" in text or "은행" in text
 
@@ -92,15 +94,29 @@ def test_search_subway_atm_gangnam():
 def test_search_subway_atm_seoul_station():
     from subway_atm import search_subway_atms
 
-    text = search_subway_atms("서울역", limit=2)
+    import asyncio
+
+    text = asyncio.run(search_subway_atms("서울역", limit=2))
     assert "서울" in text
     assert "찾지 못했습니다" not in text
+
+
+def test_search_subway_atm_myungdong_fallback():
+    from subway_atm import search_subway_atms
+
+    import asyncio
+
+    text = asyncio.run(search_subway_atms("명동", limit=2))
+    assert "찾지 못했습니다" not in text
+    assert "명동" in text or "가까운" in text
 
 
 def test_search_subway_atm_unknown():
     from subway_atm import search_subway_atms
 
-    text = search_subway_atms("존재하지않는역", limit=2)
+    import asyncio
+
+    text = asyncio.run(search_subway_atms("존재하지않는곳xyz123", limit=2))
     assert "찾지 못했습니다" in text
 
 

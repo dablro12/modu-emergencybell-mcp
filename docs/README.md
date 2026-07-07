@@ -56,7 +56,7 @@ PlayMCP 등록·심사용 문서입니다. 기술 배포는 [DEPLOY_KC.md](./DEP
 
 ### `find_outdoor_service_tool` service 값
 
-- `atm` — 전국 도시광역철도 역사 ATM (공공데이터 CSV)
+- `atm` — 전국 도시광역철도 역사 ATM (공공데이터 CSV). **`station_query`에 역명 권장** (예: 강남역). 역명이 없으면 가까운 역으로 안내.
 - `wifi` — 행정안전부 무료 와이파이
 - `vet_hospital` — 행정안전부 동물병원
 

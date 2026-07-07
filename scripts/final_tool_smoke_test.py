@@ -87,8 +87,8 @@ SCENARIOS: list[tuple[str, str, dict, str]] = [
     ),
     (
         "find_outdoor_service_tool",
-        "강남역 ATM",
-        {"place_query": "강남역", "service": "atm", "limit": 3},
+        "명동 ATM",
+        {"place_query": "명동", "service": "atm", "limit": 3},
         "ATM",
     ),
     (

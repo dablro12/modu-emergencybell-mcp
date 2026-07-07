@@ -351,18 +351,21 @@ async def find_accessible_facility_tool(
 async def find_outdoor_service_tool(
     place_query: str,
     service: str = "atm",
+    station_query: str | None = None,
     wheelchair_accessible: bool = False,
     limit: int = 5,
 ) -> str:
     f"""Finds subway-station ATM info, free public WiFi, or veterinary hospitals via {SERVICE_DISPLAY}.
 
-    place_query: natural language (e.g. 강남역, 서울역, 부산 서면역). ATM uses nationwide metro station data.
+    For ATM: set `station_query` to the station name when possible (e.g. 강남역, 서울역).
+    `place_query` is a location hint used when the station name is unclear.
     service: atm | wifi | vet_hospital (or 동물병원, 와이파이).
     wheelchair_accessible: reserved for ATM (local data has no wheelchair filter).
     """
     return await find_outdoor_service(
         place_query=place_query,
         service=service,
+        station_query=station_query,
         wheelchair_accessible=wheelchair_accessible,
         limit=limit,
     )
