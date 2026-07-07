@@ -10,7 +10,6 @@ tests/
 docs/
 source/
 assets/
-data/**/*.csv
 data/crawled_data/
 *.md
 !README.md
