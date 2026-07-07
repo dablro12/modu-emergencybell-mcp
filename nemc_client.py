@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Any
@@ -128,18 +129,131 @@ async def resolve_region(
         sido, sigungu = parse_place_query(place_query)
         if sido:
             return sido, sigungu, lat, lng
-        tokens = place_query.replace(",", " ").split()
-        if len(tokens) >= 2:
-            return tokens[0], tokens[1], lat, lng
-        if len(tokens) == 1:
-            return tokens[0], "", lat, lng
 
-    raise ValueError("place_query 또는 latitude/longitude가 필요합니다.")
+    raise ValueError(
+        f"지역을 특정하지 못했습니다: `{place_query}`. "
+        "**시·구**를 포함해 주세요 (예: `서울 종로구`, `부산 수영구 광안리`)."
+    )
 
 
 def _qt_for_today(kst: datetime | None = None) -> str:
     now = kst or datetime.now(ZoneInfo("Asia/Seoul"))
     return str(now.weekday() + 1)
+
+
+DAY_NAME_MAP: dict[str, str] = {
+    "월요일": "1",
+    "화요일": "2",
+    "수요일": "3",
+    "목요일": "4",
+    "금요일": "5",
+    "토요일": "6",
+    "일요일": "7",
+    "monday": "1",
+    "tuesday": "2",
+    "wednesday": "3",
+    "thursday": "4",
+    "friday": "5",
+    "saturday": "6",
+    "sunday": "7",
+    "mon": "1",
+    "tue": "2",
+    "wed": "3",
+    "thu": "4",
+    "fri": "5",
+    "sat": "6",
+    "sun": "7",
+}
+
+HOLIDAY_KEYWORDS = (
+    "공휴일",
+    "휴일",
+    "연휴",
+    "설날",
+    "설",
+    "추석",
+    "어린이날",
+    "christmas",
+    "holiday",
+    "public holiday",
+)
+
+FIXED_HOLIDAYS = frozenset({
+    (1, 1),
+    (3, 1),
+    (5, 5),
+    (6, 6),
+    (8, 15),
+    (10, 3),
+    (10, 9),
+    (12, 25),
+})
+
+LATE_NIGHT_KEYWORDS = ("새벽", "심야", "밤", "late night", "midnight", "24시", "24h", "야간")
+
+
+def _parse_korean_date(text: str, kst: datetime) -> datetime | None:
+    m = re.search(r"(\d{4})\s*년?\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일?", text)
+    if m:
+        return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)), tzinfo=kst.tzinfo)
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d"):
+        try:
+            return datetime.strptime(text.strip()[:10], fmt).replace(tzinfo=kst.tzinfo)
+        except ValueError:
+            continue
+    return None
+
+
+def parse_treatment_day(
+    value: str | None,
+    *,
+    kst: datetime | None = None,
+) -> tuple[str, str | None]:
+    """자연어/날짜 → NEMC QT 코드(1~7, 8=공휴). 두 번째 값은 시간 관련 안내."""
+    now = kst or datetime.now(ZoneInfo("Asia/Seoul"))
+    if not value or not str(value).strip():
+        return _qt_for_today(now), None
+
+    raw = str(value).strip()
+    lowered = raw.lower()
+    time_note = None
+    if any(k in raw or k in lowered for k in LATE_NIGHT_KEYWORDS):
+        time_note = (
+            "공공데이터는 **요일 단위** 안내만 제공합니다. "
+            "새벽·심야 영업은 **365/24/심야** 약국일 수 있으니 **전화 확인**하세요."
+        )
+
+    if lowered in DAY_NAME_MAP:
+        return DAY_NAME_MAP[lowered], time_note
+    if raw in DAY_NAME_MAP:
+        return DAY_NAME_MAP[raw], time_note
+    for day_name, code in DAY_NAME_MAP.items():
+        if day_name in raw or day_name in lowered:
+            return code, time_note
+    if raw.isdigit() and raw in {"1", "2", "3", "4", "5", "6", "7", "8"}:
+        return raw, time_note
+    if any(k in raw or k in lowered for k in HOLIDAY_KEYWORDS):
+        return "8", time_note
+
+    parsed = _parse_korean_date(raw, now)
+    if not parsed:
+        parsed = _parse_korean_date(lowered, now)
+    if parsed:
+        if (parsed.month, parsed.day) in FIXED_HOLIDAYS:
+            return "8", time_note
+        return str(parsed.weekday() + 1), time_note
+
+    return _qt_for_today(now), time_note
+
+
+def _sort_pharmacies_for_late_night(pharmacies: list[dict[str, str]]) -> list[dict[str, str]]:
+    keywords = ("365", "24", "심야", "열린", "온누리")
+
+    def score(row: dict[str, str]) -> int:
+        name = row.get("dutyName", "")
+        return sum(1 for k in keywords if k in name)
+
+    return sorted(pharmacies, key=score, reverse=True)
 
 
 async def fetch_open_clinics(
@@ -312,7 +426,7 @@ async def find_open_clinics_near(
         latitude=latitude,
         longitude=longitude,
     )
-    qt = treatment_day or _qt_for_today()
+    qt, _time_note = parse_treatment_day(treatment_day)
     clinics = await fetch_open_clinics(
         sido=sido,
         sigungu=sigungu,
@@ -375,6 +489,7 @@ def format_pharmacy_list(
     region_label: str,
     treatment_day: str,
     coords_hint: str | None = None,
+    time_note: str | None = None,
 ) -> str:
     if not pharmacies:
         return (
@@ -390,6 +505,8 @@ def format_pharmacy_list(
     ]
     if coords_hint:
         lines.append(f"- 기준: {coords_hint}")
+    if time_note:
+        lines.append(f"- ⏰ {time_note}")
     lines.append("")
 
     for idx, p in enumerate(pharmacies, start=1):
@@ -425,7 +542,7 @@ async def find_open_pharmacies_near(
         latitude=latitude,
         longitude=longitude,
     )
-    qt = treatment_day or _qt_for_today()
+    qt, time_note = parse_treatment_day(treatment_day)
     try:
         pharmacies = await fetch_open_pharmacies(
             sido=sido,
@@ -441,6 +558,7 @@ async def find_open_pharmacies_near(
             f"{MEDICAL_DISCLAIMER}"
         )
 
+    pharmacies = _sort_pharmacies_for_late_night(pharmacies)
     pharmacies = _sort_by_distance(pharmacies, lat, lng)[:limit]
     for p in pharmacies:
         try:
@@ -463,6 +581,7 @@ async def find_open_pharmacies_near(
         region_label=region_label,
         treatment_day=qt,
         coords_hint=coords_hint,
+        time_note=time_note,
     )
 
 

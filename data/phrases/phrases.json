@@ -87,6 +87,30 @@
         }
       ]
     },
+    "pharmacy_allergy_check": {
+      "title_ko": "약국 — 알레르기 확인",
+      "title_en": "Pharmacy — allergy check",
+      "phrases": [
+        {
+          "ko": "이 약에 제가 알레르기 있는 성분이 들어있나요?",
+          "en": "Does this medicine contain anything I'm allergic to?",
+          "ja": "この薬に私のアレルギー成分は含まれていますか？",
+          "zh": "这种药里有没有我会过敏的成分？"
+        },
+        {
+          "ko": "○○(예: 페니실린) 알레르기가 있습니다. 이 약 괜찮을까요?",
+          "en": "I'm allergic to [name]. Is this medicine safe for me?",
+          "ja": "○○（例：ペニシリン）アレルギーがあります。この薬は大丈夫ですか？",
+          "zh": "我对[名称]过敏，这种药我可以吃吗？"
+        },
+        {
+          "ko": "처방전 없이 살 수 있는 해열제 중 알레르기 없는 것 추천해 주세요.",
+          "en": "Recommend an over-the-counter fever medicine that is safe for my allergies.",
+          "ja": "処方箋なしで買える解熱剤で、アレルギーのないものを教えてください。",
+          "zh": "请推荐一种不会引起我过敏的非处方退烧药。"
+        }
+      ]
+    },
     "call_help": {
       "title_ko": "도움 요청 (일반)",
       "title_en": "Ask for help",

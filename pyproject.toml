@@ -1,6 +1,6 @@
 [project]
 name = "modu-emergencybell-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "modu-emergencybell(모두의비상벨) — PlayMCP emergency guide MCP"
 requires-python = ">=3.10"
 dependencies = [

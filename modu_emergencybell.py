@@ -78,19 +78,37 @@ async def get_emergency_hotlines(
     }
 )
 async def find_nearest_restroom(
-    latitude: float,
-    longitude: float,
+    place_query: str | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
     radius: int = 500,
     user_type: str = "general",
     open_now: bool = False,
     limit: int = 5,
 ) -> str:
-    f"""Finds nearest public restrooms from WGS84 coordinates via {SERVICE_DISPLAY}.
+    f"""Finds nearest public restrooms via {SERVICE_DISPLAY}.
 
-    Data: MOIS public restroom open data. user_type filters: wheelchair, child, infant_care,
-    elderly_safety (restroom wall emergency button — on-site staff, NOT 119), general.
-    open_now filters by published hours when available. radius in meters (default 500).
+    Prefer **place_query** in natural language (e.g. 강남역, 서울 마포구, COEX).
+    Coordinates are optional — only when the client already has GPS.
+    user_type: wheelchair, child, infant_care, elderly_safety (restroom wall button), general.
     """
+    if place_query and (latitude is None or longitude is None):
+        restrooms, coords = await search_restrooms_by_query(
+            place_query,
+            radius,
+            user_type=user_type if user_type != "general" else None,
+            open_now=open_now,
+            limit=limit,
+        )
+        return format_restroom_list(restrooms, query=place_query, coords_hint=coords)
+
+    if latitude is None or longitude is None:
+        return (
+            "화장실을 찾으려면 **장소명**을 알려주세요 "
+            "(예: `강남역`, `서울 마포구`, `부산 서면`).\n"
+            "또는 `search_restroom`을 사용하세요."
+        )
+
     restrooms = await fetch_restrooms(
         latitude,
         longitude,
@@ -144,10 +162,9 @@ async def find_open_clinic(
 ) -> str:
     f"""Lists hospitals or clinics open on a given day near a region via {SERVICE_DISPLAY}.
 
-    Uses NEMC open-data API (national clinic search). place_query: district or landmark
-    (e.g. 마포구, 서울 강남구). specialty: pediatric (D013), general, or D-code.
-    treatment_day: 1-7 weekday, 8=public holiday (default: today KST).
-    Pair with get_emergency_hotlines when unsure ER vs clinic.
+    Natural-language place_query only (e.g. 대전 유성구, 서울 마포구).
+    treatment_day accepts: 월요일~일요일, 공휴일/설/추석, 2026-05-05, or 1-8.
+    specialty: pediatric, general, or D-code.
     """
     return await find_open_clinics_near(
         place_query=place_query,
@@ -189,9 +206,9 @@ async def find_open_pharmacy(
 ) -> str:
     f"""Lists pharmacies open on a given day near a region via {SERVICE_DISPLAY}.
 
-    Uses NEMC pharmacy open-data API (15000576). place_query: district or landmark
-    (e.g. 마포구). treatment_day: 1-7 weekday, 8=public holiday (default: today KST).
-    Verify hours by phone — public data may differ from actual hours.
+    Natural-language place_query only (e.g. 서울 종로구, 부산 남구).
+    treatment_day: 월요일~일요일, 공휴일/설/추석/어린이날, 2026-05-05, or 1-8.
+    For late-night (새벽/심야), results prioritize 365/24/심야 pharmacies — verify by phone.
     """
     return await find_open_pharmacies_near(
         place_query=place_query,
@@ -217,9 +234,10 @@ async def find_safety_bell(
 ) -> str:
     f"""Finds crime-prevention outdoor safety bells near a place via {SERVICE_DISPLAY}.
 
-    Data: MOIS national safety-bell locations (~72k). NOT restroom wall buttons
-    (use search_restroom with user_type=elderly_safety). Does NOT dial 119/112.
-    place_query or latitude/longitude required. place_type filters e.g. 공원, 골목길.
+    Use **place_query in natural language only** (e.g. 서울 이태원, 부산 광안리, 한강공원 여의도).
+    Do NOT ask the user for coordinates — geocoding is internal.
+    NOT restroom wall buttons (use search_restroom user_type=elderly_safety).
+    place_type optional filter: 골목길, 공원, etc.
     """
     return await find_safety_bells_near(
         place_query=place_query,
@@ -243,8 +261,9 @@ async def get_phrase_card(
 ) -> str:
     f"""Returns show-to-staff phrase cards for foreign visitors via {SERVICE_DISPLAY}.
 
-    Scenarios: hospital_visit, pharmacy_visit, emergency_symptoms, allergy, call_help.
-    Languages: ko, en, ja, zh. Pair with get_emergency_hotlines(foreign_visitor).
+    Scenarios: hospital_visit, pharmacy_visit, pharmacy_allergy_check, emergency_symptoms,
+    allergy, call_help. Use pharmacy_allergy_check when user asks if a medicine causes allergy.
+    Languages: ko, en, ja, zh.
     """
     return format_phrase_card(scenario=scenario, language=language)
 
