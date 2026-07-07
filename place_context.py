@@ -90,6 +90,47 @@ SERVICE_ALIASES_EXTRA: dict[str, str] = {
 WFCLT_ID_PATTERN = re.compile(r"^\d{4,}-[\d-]+$")
 DONG_PATTERN = re.compile(r"([가-힣]+\d*동)")
 STATION_PATTERN = re.compile(r"([가-힣A-Za-z0-9]+역)")
+SIGUNGU_PATTERN = re.compile(r"([가-힣]+(?:구|군))")
+
+# 장소가 아닌 의도어 — place_query로 넘어오면 무시
+PLACE_NOISE_TOKENS = frozenset({
+    "화장실",
+    "급똥",
+    "똥",
+    "와이파이",
+    "wifi",
+    "wi-fi",
+    "atm",
+    "약국",
+    "병원",
+    "응급실",
+    "버스",
+    "정류장",
+    "정류소",
+    "화장실알려줘",
+    "알려줘",
+    "찾아줘",
+})
+
+REGION_FALLBACK_TOKENS = (
+    "서울",
+    "부산",
+    "대구",
+    "인천",
+    "광주",
+    "대전",
+    "울산",
+    "세종",
+    "종로구",
+    "마포구",
+    "강남구",
+    "용산구",
+    "중구",
+    "해운대구",
+    "연제구",
+    "부산진구",
+    "중랑구",
+)
 
 
 def normalize_situation_tag(value: str | None) -> str | None:
@@ -144,12 +185,95 @@ def infer_user_type_from_text(text: str) -> str | None:
 
 
 def extract_place_hint(text: str) -> str:
-    for match in STATION_PATTERN.findall(text):
+    """하위 호환 — extract_place_from_text 사용 권장."""
+    return extract_place_from_text(text)
+
+
+def extract_place_from_text(text: str) -> str:
+    """사용자 원문에서 장소 힌트 추출 (랜드마크·역·동·구·시도)."""
+    stripped = (text or "").strip()
+    if not stripped:
+        return ""
+
+    cleaned = strip_poi_noise(stripped)
+
+    poi = resolve_landmark_poi(cleaned) or resolve_landmark_poi(stripped)
+    if poi:
+        return poi[2]
+
+    for match in STATION_PATTERN.findall(cleaned):
         if match in STATION_REGION:
             return match
-    for match in DONG_PATTERN.findall(text):
+        if match.endswith("역") and len(match) >= 2:
+            return match
+
+    tokens = cleaned.replace(",", " ").split()
+    for dong, _full in sorted(DONG_EXACT.items(), key=lambda x: -len(x[0])):
+        if dong in tokens or cleaned == dong:
+            return dong
+
+    for match in DONG_PATTERN.findall(cleaned):
         if match in DONG_EXACT:
             return match
+        if match.endswith("동") and len(match) >= 2:
+            return match
+
+    for match in SIGUNGU_PATTERN.findall(cleaned):
+        return match
+
+    for token in REGION_FALLBACK_TOKENS:
+        if token in cleaned:
+            return token
+
+    for station in STATION_REGION:
+        if station.replace("역", "") in cleaned and "역" in cleaned:
+            return station
+
+    return ""
+
+
+def _is_generic_region_token(name: str) -> bool:
+    return name in REGION_FALLBACK_TOKENS or name in SIDO_ALIASES or name in SIDO_ALIASES.values()
+
+
+def merge_place_inputs(place_query: str | None, user_request: str | None) -> str:
+    """LLM place_query + user_request 원문 → 서버 측 최적 장소 문자열."""
+    pq = strip_poi_noise((place_query or "").strip())
+    ur = (user_request or "").strip()
+
+    if pq in PLACE_NOISE_TOKENS:
+        pq = ""
+
+    from_text = extract_place_from_text(ur) if ur else ""
+    pq_poi = resolve_landmark_poi(pq) if pq else None
+    from_poi = resolve_landmark_poi(from_text) if from_text else None
+
+    if pq and ur:
+        if pq_poi and (not from_poi or len(pq_poi[2]) >= len(from_poi[2])):
+            return pq_poi[2]
+        if from_poi and not pq_poi:
+            return from_poi[2]
+        if pq and not _is_generic_region_token(pq) and _is_generic_region_token(from_text):
+            return pq
+        if from_text and not _is_generic_region_token(from_text) and (
+            _is_generic_region_token(pq) or len(from_text) > len(pq)
+        ):
+            return from_text
+        if pq in ur or from_text == pq:
+            return pq
+        return from_text or pq
+
+    if pq:
+        return pq_poi[2] if pq_poi else pq
+
+    if from_text:
+        return from_poi[2] if from_poi else from_text
+
+    if ur:
+        cleaned = strip_poi_noise(ur)
+        if cleaned and cleaned not in PLACE_NOISE_TOKENS:
+            return cleaned
+
     return ""
 
 
@@ -213,7 +337,20 @@ def classify_intents(text: str) -> list[str]:
 
     if any(k in text for k in ("119", "112", "1339", "182", "전화", "신고", "실종", "가스", "누출", "독극물")):
         add("hotlines")
-    if "화장실" in text or "restroom" in lowered or "toilet" in lowered or "급똥" in text:
+    if any(
+        k in text
+        for k in (
+            "화장실",
+            "restroom",
+            "toilet",
+            "급똥",
+            "똥",
+            "볼일",
+            "대변",
+            "오줌",
+            "배변",
+        )
+    ) or "restroom" in lowered:
         add("restroom")
     if any(k in text for k in ("안전비상벨", "범죄예방", "safety bell")) and "화장실" not in text:
         add("safety_bell")

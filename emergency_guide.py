@@ -19,11 +19,11 @@ from veteran_hospital import find_veteran_hospitals_near
 from outdoor_services import find_outdoor_service
 from place_context import (
     classify_intents,
-    extract_place_hint,
     infer_specialty,
     infer_user_type_from_text,
     normalize_situation_tag,
 )
+from intent_routing import resolve_effective_place
 from phrases import format_phrase_card
 from safe182_client import search_safe_places
 from safety_bell import find_safety_bells_near
@@ -37,15 +37,14 @@ GUIDE_HEADER = (
 
 
 async def _resolve_place(user_request: str, place_query: str | None) -> "PlaceContext":
-    from place_resolver import PlaceContext, resolve_place_context
+    from place_resolver import PlaceContext
 
-    base = (place_query or "").strip() or extract_place_hint(user_request)
-    if not base:
-        for token in ("서울", "부산", "마포구", "종로구", "강남구", "연제구"):
-            if token in user_request:
-                base = token
-                break
-    return await resolve_place_context(base or "서울")
+    _effective, ctx = await resolve_effective_place(
+        place_query=place_query,
+        user_request=user_request,
+        fallback="서울",
+    )
+    return ctx
 
 
 async def emergency_guide(
