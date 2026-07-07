@@ -14,9 +14,11 @@ from kakao_local import geocode_place
 
 CLIENT_ID = os.getenv("KFTC_FINMAP_CLIENT_ID", "")
 CLIENT_SECRET = os.getenv("KFTC_FINMAP_CLIENT_SECRET", "")
-BASE_URL = os.getenv("KFTC_FINMAP_BASE_URL", "https://testfinmapapi.kftc.or.kr").rstrip("/")
+PROD_URL = os.getenv("KFTC_FINMAP_PROD_URL", "https://finmapapi.kftc.or.kr").rstrip("/")
+TEST_URL = os.getenv("KFTC_FINMAP_TEST_URL", "https://testfinmapapi.kftc.or.kr").rstrip("/")
+BASE_URL = os.getenv("KFTC_FINMAP_BASE_URL", PROD_URL).rstrip("/")
 
-_token_cache: dict[str, Any] = {"token": "", "expires_at": 0.0}
+_token_cache: dict[str, Any] = {"token": "", "expires_at": 0.0, "base": ""}
 
 
 def _require_credentials() -> tuple[str, str]:
@@ -25,30 +27,52 @@ def _require_credentials() -> tuple[str, str]:
     return CLIENT_ID, CLIENT_SECRET
 
 
-async def _get_access_token() -> str:
+def _candidate_bases() -> list[str]:
+    bases: list[str] = []
+    for url in (BASE_URL, PROD_URL, TEST_URL):
+        if url and url not in bases:
+            bases.append(url)
+    return bases
+
+
+async def _get_access_token() -> tuple[str, str]:
     now = time.time()
     if _token_cache["token"] and _token_cache["expires_at"] > now + 60:
-        return _token_cache["token"]
+        return _token_cache["token"], _token_cache["base"]
 
     client_id, client_secret = _require_credentials()
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            f"{BASE_URL}/oauth/2.0/token",
-            data={
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "scope": "finmap",
-                "grant_type": "client_credentials",
-            },
-        )
-        response.raise_for_status()
-        payload = response.json()
+    last_error = "금융맵 토큰 발급 실패"
 
-    token = payload["access_token"]
-    expires_in = int(payload.get("expires_in", 3600))
-    _token_cache["token"] = token
-    _token_cache["expires_at"] = now + expires_in
-    return token
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        for base in _candidate_bases():
+            try:
+                response = await client.post(
+                    f"{base}/oauth/2.0/token",
+                    data={
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "scope": "finmap",
+                        "grant_type": "client_credentials",
+                    },
+                )
+            except httpx.HTTPError as exc:
+                last_error = f"{base} 연결 실패: {exc.__class__.__name__}"
+                continue
+            if response.status_code >= 400:
+                last_error = f"{base} 토큰 오류 ({response.status_code})"
+                continue
+            payload = response.json()
+            token = payload.get("access_token")
+            if not token:
+                last_error = f"{base} 토큰 응답 없음"
+                continue
+            expires_in = int(payload.get("expires_in", 3600))
+            _token_cache["token"] = token
+            _token_cache["expires_at"] = now + expires_in
+            _token_cache["base"] = base
+            return token, base
+
+    raise RuntimeError(last_error)
 
 
 def _bbox(lat: float, lng: float, radius_m: int) -> dict[str, str]:
@@ -75,7 +99,16 @@ async def search_atms_near(
         return f"'{place_query}' 위치를 찾지 못했습니다. 역·구 이름으로 다시 시도해 주세요."
 
     lat, lng = coords
-    token = await _get_access_token()
+    try:
+        token, base = await _get_access_token()
+    except RuntimeError as exc:
+        return (
+            f"금융맵 API에 연결하지 못했습니다.\n"
+            f"- {exc}\n"
+            "- KC 네트워크에서 `finmapapi.kftc.or.kr` 접근이 가능한지 확인하세요.\n"
+            "- GitHub Secrets의 `KFTC_FINMAP_BASE_URL`을 운영/테스트 URL로 맞춰 주세요."
+        )
+
     body = {
         **_bbox(lat, lng, radius_m),
         "mob_cash_card_psb_yn": "N",
@@ -90,19 +123,21 @@ async def search_atms_near(
         },
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=25.0) as client:
         response = await client.post(
-            f"{BASE_URL}/v1.0/inquiry/atm_lists",
+            f"{base}/v1.0/inquiry/atm_lists",
             headers={"Authorization": f"Bearer {token}"},
             json=body,
         )
-        if response.status_code >= 400:
-            return (
-                f"금융맵 API 오류 ({response.status_code}). "
-                "테스트베드 접근·인증정보를 확인하세요."
-            )
-        payload = response.json()
 
+    if response.status_code >= 400:
+        return (
+            f"금융맵 ATM 조회 오류 ({response.status_code}).\n"
+            f"- 사용 URL: {base}\n"
+            "- 인증정보·테스트베드 승인 상태를 확인하세요."
+        )
+
+    payload = response.json()
     if payload.get("rsp_code") != "000":
         return f"금융맵 조회 실패: {payload.get('rsp_message', 'unknown error')}"
 
@@ -125,6 +160,7 @@ async def search_atms_near(
     lines = [
         f"## ATM — {place_query}",
         f"- 기준 좌표: {lat:.6f}, {lng:.6f}",
+        f"- API: {base}",
         "",
     ]
     for idx, atm in enumerate(atms, start=1):

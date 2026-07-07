@@ -19,8 +19,9 @@ from nemc_client import (
     find_open_pharmacies_near,
 )
 from phrases import format_phrase_card
+from accessible_facility_client import find_accessible_facility
 from outdoor_services import find_outdoor_service
-from odsay_client import find_transit_route
+from safe182_client import search_safe_places
 from safety_bell import find_safety_bells_near
 from subway_facility import find_subway_facility
 
@@ -293,23 +294,51 @@ async def find_subway_facility_tool(
 @mcp.tool(
     annotations={
         **TOOL_ANNOTATIONS,
-        "title": "Find Public Transit Route",
+        "title": "Find SafeDream Safety Places",
     }
 )
-async def find_transit_route_tool(
-    origin_query: str,
-    destination_query: str,
-    optimize: int = 0,
+async def find_safe_place(
+    place_query: str,
+    category: str = "child_safety_house",
+    radius_m: int = 1000,
+    limit: int = 5,
 ) -> str:
-    f"""Public transit directions between two places via {SERVICE_DISPLAY} (ODsay).
+    f"""Finds child safety houses and other Safe182 map facilities via {SERVICE_DISPLAY}.
 
-    Examples: origin=서울역, destination=강남역. Uses geocoding + ODsay path search.
-    optimize: 0=recommended, 1=minimum transfers, 2=minimum walking.
+    Natural-language place_query only (e.g. 종로구, 강남역, 명동).
+    category: child_safety_house, elderly, youth, child_welfare, crime_area, violence_support, all.
+    For missing child emergencies, also call 112 / Safe182 182.
     """
-    return await find_transit_route(
-        origin_query=origin_query,
-        destination_query=destination_query,
-        optimize=optimize,
+    return await search_safe_places(
+        place_query=place_query,
+        category=category,
+        radius_m=radius_m,
+        limit=limit,
+    )
+
+
+@mcp.tool(
+    annotations={
+        **TOOL_ANNOTATIONS,
+        "title": "Find Accessible Facility",
+    }
+)
+async def find_accessible_facility_tool(
+    place_query: str,
+    facility_id: str | None = None,
+    include_subway: bool = True,
+    limit: int = 5,
+) -> str:
+    f"""Finds wheelchair-accessible restrooms, subway lifts, and disabled-access facilities via {SERVICE_DISPLAY}.
+
+    Natural-language place_query (e.g. 서울역, COEX, 부산 서면).
+    Optional facility_id for 한국사회보장정보원 장애인편의시설 상세 조회.
+    """
+    return await find_accessible_facility(
+        place_query=place_query,
+        facility_id=facility_id,
+        include_subway=include_subway,
+        limit=limit,
     )
 
 

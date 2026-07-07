@@ -92,13 +92,38 @@ async def test_vet_api_live():
 
 
 @pytest.mark.asyncio
-async def test_odsay_auth_message():
+async def test_safe182_live():
     import os
 
-    if not os.getenv("ODSAY_API_KEY"):
-        pytest.skip("ODSAY_API_KEY not set")
+    if not os.getenv("SAFE182_AUTH_ID") or not os.getenv("SAFE182_AUTH_KEY"):
+        pytest.skip("SAFE182 credentials not set")
 
-    from odsay_client import find_transit_route
+    from safe182_client import search_safe_places
 
-    text = await find_transit_route(origin_query="서울역", destination_query="강남역")
-    assert "서울역" in text or "ODsay" in text or "강남" in text
+    text = await search_safe_places(place_query="서울 종로구", category="child_safety_house", limit=2)
+    assert "안전Dream" in text or "아동" in text or "찾지 못했습니다" in text
+
+
+@pytest.mark.asyncio
+async def test_disabled_facility_detail_live():
+    import os
+
+    if not os.getenv("DATA_GO_KR_SERVICE_KEY"):
+        pytest.skip("DATA_GO_KR_SERVICE_KEY not set")
+
+    from accessible_facility_client import find_accessible_facility
+
+    text = await find_accessible_facility(
+        place_query="서울역",
+        facility_id="4421010800-1-01490001",
+    )
+    assert "장애인 편의시설" in text
+    assert "승강기" in text or "화장실" in text
+
+
+@pytest.mark.asyncio
+async def test_accessible_facility_offline():
+    from accessible_facility_client import find_accessible_facility
+
+    text = await find_accessible_facility(place_query="강남역", include_subway=True, limit=3)
+    assert "접근성" in text or "화장실" in text or "지하철" in text

@@ -88,12 +88,13 @@ Repository → **Settings** → **Secrets and variables** → **Actions**
 | `DATA_GO_KR_SERVICE_KEY` | 공공데이터 (Decoding) |
 | `DATA_GO_KR_SERVICE_KEY_ENCODED` | 공공데이터 (Encoding, NEMC XML용) |
 | `KAKAO_REST_API_KEY` | Kakao Local 지오코딩 |
-| `ODSAY_API_KEY` | ODsay 대중교통 길찾기 |
-| `KFTC_FINMAP_CLIENT_ID` | 금융맵 OAuth |
-| `KFTC_FINMAP_CLIENT_SECRET` | 금융맵 OAuth |
-| `KFTC_FINMAP_BASE_URL` | `https://testfinmapapi.kftc.or.kr` (운영 전환 시 변경) |
+| `SAFE182_AUTH_ID` / `SAFE182_AUTH_KEY` | 경찰청 안전Dream |
+| `KFTC_FINMAP_CLIENT_ID` / `KFTC_FINMAP_CLIENT_SECRET` | 금융맵 OAuth |
+| `KFTC_FINMAP_BASE_URL` | `https://finmapapi.kftc.or.kr` (운영, 실패 시 테스트 URL 자동 시도) |
+| `KFTC_FINMAP_PROD_URL` | `https://finmapapi.kftc.or.kr` |
+| `KFTC_FINMAP_TEST_URL` | `https://testfinmapapi.kftc.or.kr` |
 
-> ODsay: KC 배포 IP를 ODsay 애플리케이션 **Server IP**에 등록해야 `find_transit_route` 동작.
+> 금융맵: KC에서 운영 URL 접근이 안 되면 `KFTC_FINMAP_BASE_URL`을 테스트베드로 설정하세요.
 
 ---
 
