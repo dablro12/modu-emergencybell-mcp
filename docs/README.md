@@ -47,7 +47,7 @@ PlayMCP 등록·심사용 문서입니다. 기술 배포는 [DEPLOY_KC.md](./DEP
 | `find_subway_facility_tool` | 강남역 물품보관함 / 엘리베이터 | 서울·부산·인천 지하철 CSV |
 | `find_safe_place` | 종로 아동안전지킴이집 | 경찰청 안전Dream API |
 | `find_accessible_facility_tool` | 서울역 휠체어 화장실 | 공중화장실 + 지하철 + 장애인편의시설 API |
-| `find_outdoor_service_tool` | 명동 ATM / 무료 와이파이 / 동물병원 | 금융맵 + data.go.kr |
+| `find_outdoor_service_tool` | 강남역 ATM / 무료 와이파이 / 동물병원 | 역사 ATM CSV + data.go.kr |
 
 ### `find_accessible_facility_tool`
 
@@ -56,7 +56,7 @@ PlayMCP 등록·심사용 문서입니다. 기술 배포는 [DEPLOY_KC.md](./DEP
 
 ### `find_outdoor_service_tool` service 값
 
-- `atm` — 금융결제원 금융맵 (운영 URL 우선, 실패 시 테스트베드 재시도)
+- `atm` — 전국 도시광역철도 역사 ATM (공공데이터 CSV)
 - `wifi` — 행정안전부 무료 와이파이
 - `vet_hospital` — 행정안전부 동물병원
 
@@ -99,7 +99,6 @@ PlayMCP 등록·심사용 문서입니다. 기술 배포는 [DEPLOY_KC.md](./DEP
 | `DATA_GO_KR_SERVICE_KEY` | 공공데이터 (Decoding) |
 | `DATA_GO_KR_SERVICE_KEY_ENCODED` | NEMC XML (Encoding) |
 | `SAFE182_AUTH_ID` / `SAFE182_AUTH_KEY` | 안전Dream |
-| `KFTC_FINMAP_*` | 금융맵 OAuth·URL |
 
 ---
 

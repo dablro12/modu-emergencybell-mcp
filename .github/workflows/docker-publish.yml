@@ -46,8 +46,3 @@ jobs:
             KAKAO_REST_API_KEY=${{ secrets.KAKAO_REST_API_KEY }}
             SAFE182_AUTH_ID=${{ secrets.SAFE182_AUTH_ID }}
             SAFE182_AUTH_KEY=${{ secrets.SAFE182_AUTH_KEY }}
-            KFTC_FINMAP_CLIENT_ID=${{ secrets.KFTC_FINMAP_CLIENT_ID }}
-            KFTC_FINMAP_CLIENT_SECRET=${{ secrets.KFTC_FINMAP_CLIENT_SECRET }}
-            KFTC_FINMAP_BASE_URL=${{ secrets.KFTC_FINMAP_BASE_URL }}
-            KFTC_FINMAP_PROD_URL=${{ secrets.KFTC_FINMAP_PROD_URL }}
-            KFTC_FINMAP_TEST_URL=${{ secrets.KFTC_FINMAP_TEST_URL }}

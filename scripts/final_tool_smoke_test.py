@@ -87,8 +87,8 @@ SCENARIOS: list[tuple[str, str, dict, str]] = [
     ),
     (
         "find_outdoor_service_tool",
-        "명동 ATM",
-        {"place_query": "명동", "service": "atm", "limit": 3},
+        "강남역 ATM",
+        {"place_query": "강남역", "service": "atm", "limit": 3},
         "ATM",
     ),
     (
@@ -111,8 +111,6 @@ async def run_one(name: str, label: str, kwargs: dict, expect: str) -> dict:
     try:
         result = await fn(**kwargs)
         ok = expect.lower() in result.lower() or "찾지 못했습니다" not in result[:80]
-        if "오류" in result and "금융맵" in result:
-            ok = ok or "연결" in result  # finmap network issue is acceptable with message
         return {
             "tool": name,
             "label": label,

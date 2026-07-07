@@ -8,7 +8,7 @@ from datago_json_client import (
     search_free_wifi,
     search_vet_hospitals,
 )
-from finmap_client import search_atms_near
+from subway_atm import search_subway_atms
 
 SERVICE_ALIASES = {
     "atm": "atm",
@@ -39,11 +39,7 @@ async def find_outdoor_service(
 ) -> str:
     kind = normalize_service(service)
     if kind == "atm":
-        return await search_atms_near(
-            place_query=place_query,
-            wheelchair_accessible=wheelchair_accessible,
-            limit=limit,
-        )
+        return search_subway_atms(station_query=place_query, limit=limit)
     if kind == "wifi":
         rows = await search_free_wifi(place_query=place_query, limit=limit)
         return format_wifi_list(rows, query=place_query)

@@ -25,6 +25,7 @@ jobs:
         run: |
           python scripts/process_restroom_data.py
           python scripts/process_subway_data.py
+          python scripts/process_subway_atm_data.py
 
       - name: Run tests
         run: pytest tests/ -v

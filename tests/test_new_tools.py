@@ -13,6 +13,7 @@ from scripts.process_subway_data import normalize_station
 from subway_facility import find_subway_facility, load_index
 
 SUBWAY_INDEX = Path(__file__).resolve().parent.parent / "data" / "subway" / "subway_index.json"
+SUBWAY_ATM_INDEX = Path(__file__).resolve().parent.parent / "data" / "subway" / "subway_atm_index.json"
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -21,6 +22,10 @@ def ensure_subway_index() -> None:
         import scripts.process_subway_data as processor
 
         processor.main()
+    if not SUBWAY_ATM_INDEX.exists():
+        import scripts.process_subway_atm_data as atm_processor
+
+        atm_processor.main()
 
 
 def test_normalize_station():
@@ -67,6 +72,36 @@ def test_format_wifi_empty():
 
 def test_format_vet_empty():
     assert "찾지 못했습니다" in format_vet_list([], query="테스트")
+
+
+def test_subway_atm_index_loaded():
+    from subway_atm import load_index
+
+    data = load_index()
+    assert data.get("meta", {}).get("station_count", 0) > 100
+
+
+def test_search_subway_atm_gangnam():
+    from subway_atm import search_subway_atms
+
+    text = search_subway_atms("강남역", limit=3)
+    assert "강남" in text
+    assert "ATM" in text or "효성" in text or "은행" in text
+
+
+def test_search_subway_atm_seoul_station():
+    from subway_atm import search_subway_atms
+
+    text = search_subway_atms("서울역", limit=2)
+    assert "서울" in text
+    assert "찾지 못했습니다" not in text
+
+
+def test_search_subway_atm_unknown():
+    from subway_atm import search_subway_atms
+
+    text = search_subway_atms("존재하지않는역", limit=2)
+    assert "찾지 못했습니다" in text
 
 
 @pytest.mark.asyncio
