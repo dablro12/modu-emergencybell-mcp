@@ -10,7 +10,7 @@ from bus_stop import format_bus_stop_list, load_index, search_bus_stops
 from outdoor_services import normalize_service
 from scripts.process_bus_stop_data import write_mini_fixture
 
-INDEX_FILE = Path(__file__).resolve().parents[2] / "data" / "bus" / "bus_stop_index.json"
+INDEX_FILE = Path(__file__).resolve().parents[1] / "data" / "bus" / "bus_stop_index.json"
 
 
 @pytest.fixture(scope="module", autouse=True)

@@ -9,7 +9,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 SUBWAY_DIR = ROOT / "data" / "subway"
 XLSX_GLOB = "*ATM*.xlsx"
 CSV_NAME = "전국_도시광역철도_역사_ATM_현황_20251230.csv"

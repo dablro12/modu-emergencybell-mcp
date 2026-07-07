@@ -3,26 +3,26 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY server/requirements.txt ./server/requirements.txt
-RUN pip install --no-cache-dir -r server/requirements.txt
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY modu_emergencybell.py ./
-COPY source/app/ ./source/app/
-COPY source/scripts/ ./source/scripts/
+COPY src/ ./src/
+COPY scripts/ ./scripts/
 COPY data/ ./data/
 
 # Indexes: JSON in repo where possible; rebuild restroom + optional API indexes at image build
 RUN pip install --no-cache-dir pyproj && \
-    python source/scripts/process_animal_data.py && \
+    python scripts/process_animal_data.py && \
     test -f data/animal/animal_hospital_index.json && \
-    python source/scripts/process_restroom_data.py && \
+    python scripts/process_restroom_data.py && \
     test -f data/toilet_data/공중화장실_01_전체레코드.json && \
     test -f data/subway/subway_index.json && \
     test -f data/subway/subway_atm_index.json && \
     test -f data/emergencybell/crime_stats_index.json && \
     test -f data/emergencybell/safety_bell_records.json && \
-    (test -f data/bus/bus_stop_index.json || python source/scripts/process_bus_stop_data.py) && \
-    (test -f data/medical/veteran_hospital_index.json || python source/scripts/process_veteran_hospital_data.py)
+    (test -f data/bus/bus_stop_index.json || python scripts/process_bus_stop_data.py) && \
+    (test -f data/medical/veteran_hospital_index.json || python scripts/process_veteran_hospital_data.py)
 
 ARG DATA_GO_KR_SERVICE_KEY=""
 ARG DATA_GO_KR_SERVICE_KEY_ENCODED=""

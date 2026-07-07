@@ -8,7 +8,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data" / "emergencybell"
 OUT_FILE = DATA_DIR / "crime_stats_index.json"
 

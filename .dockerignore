@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+.pytest_cache
+__pycache__
+*.py[cod]
+.env
+.workspace
+tests/
+docs/
+source/
+assets/
+data/**/*.csv
+data/crawled_data/
+*.md
+!README.md

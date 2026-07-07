@@ -9,8 +9,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "source" / "app"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
 
 from restroom_parser import parse_record
 

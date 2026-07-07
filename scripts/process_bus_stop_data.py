@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "data" / "bus"
 OUT_FILE = OUT_DIR / "bus_stop_index.json"
 

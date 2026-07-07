@@ -1,4 +1,4 @@
-"""Ensure source/app is on sys.path for flat module imports."""
+"""Ensure src/ is on sys.path for flat module imports."""
 
 from __future__ import annotations
 

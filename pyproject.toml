@@ -14,5 +14,5 @@ modu-emergencybell = "modu_emergencybell:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["source/tests"]
-pythonpath = ["source/app", "source", "."]
+testpaths = ["tests"]
+pythonpath = ["src", "."]

@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "data" / "medical"
 OUT_FILE = OUT_DIR / "veteran_hospital_index.json"
 

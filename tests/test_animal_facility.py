@@ -11,7 +11,7 @@ from animal_facility import load_index, search_animal_facilities
 from outdoor_services import normalize_service
 from place_context import classify_intents, infer_specialty, is_pet_care_query
 
-INDEX = Path(__file__).resolve().parents[2] / "data" / "animal" / "animal_hospital_index.json"
+INDEX = Path(__file__).resolve().parents[1] / "data" / "animal" / "animal_hospital_index.json"
 
 
 @pytest.mark.skipif(not INDEX.exists(), reason="animal index not built")

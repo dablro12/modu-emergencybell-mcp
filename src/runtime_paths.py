@@ -1,11 +1,11 @@
-"""Project root and data directory paths (works from source/app layout)."""
+"""Project root and data directory paths (src/ layout)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = APP_DIR.parent.parent
+PROJECT_ROOT = APP_DIR.parent
 DATA_ROOT = PROJECT_ROOT / "data"
 
 

@@ -12,8 +12,8 @@ from outdoor_services import normalize_service
 from scripts.process_subway_data import normalize_station
 from subway_facility import find_subway_facility, load_index
 
-SUBWAY_INDEX = Path(__file__).resolve().parents[2] / "data" / "subway" / "subway_index.json"
-SUBWAY_ATM_INDEX = Path(__file__).resolve().parents[2] / "data" / "subway" / "subway_atm_index.json"
+SUBWAY_INDEX = Path(__file__).resolve().parents[1] / "data" / "subway" / "subway_index.json"
+SUBWAY_ATM_INDEX = Path(__file__).resolve().parents[1] / "data" / "subway" / "subway_atm_index.json"
 
 
 @pytest.fixture(scope="module", autouse=True)

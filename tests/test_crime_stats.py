@@ -15,7 +15,7 @@ from crime_stats import (
 )
 from scripts.process_crime_stats_data import main as build_index
 
-INDEX_FILE = Path(__file__).resolve().parents[2] / "data" / "emergencybell" / "crime_stats_index.json"
+INDEX_FILE = Path(__file__).resolve().parents[1] / "data" / "emergencybell" / "crime_stats_index.json"
 
 
 @pytest.fixture(scope="module", autouse=True)

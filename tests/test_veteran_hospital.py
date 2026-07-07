@@ -10,7 +10,7 @@ from place_context import classify_intents, infer_specialty, normalize_specialty
 from scripts.process_veteran_hospital_data import write_mini_fixture
 from veteran_hospital import find_veteran_hospitals_near, load_index, search_veteran_hospitals
 
-INDEX_FILE = Path(__file__).resolve().parents[2] / "data" / "medical" / "veteran_hospital_index.json"
+INDEX_FILE = Path(__file__).resolve().parents[1] / "data" / "medical" / "veteran_hospital_index.json"
 
 
 @pytest.fixture(scope="module", autouse=True)
