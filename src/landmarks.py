@@ -18,6 +18,7 @@ POI_SUFFIXES = (
     " 근방",
     " 주변",
     "쪽",
+    "쪽에",
     " near",
     " nearby",
     " area",

@@ -164,7 +164,7 @@ def search_records(
             in_radius = [r for r in with_coords if r["distance_m"] <= radius_m]
             filtered = in_radius or with_coords
         else:
-            filtered = without_coords
+            filtered = []
 
     return filtered[:limit]
 
@@ -226,6 +226,8 @@ async def fetch_restrooms(
     allow_region_fallback: bool = True,
     query_tokens: list[str] | None = None,
 ) -> list[dict[str, Any]]:
+    from restroom_nearby import search_restrooms_nearby
+
     if not region_prefix:
         try:
             region_info = await coord_to_region(longitude, latitude)
@@ -233,6 +235,24 @@ async def fetch_restrooms(
                 region_prefix = region_info["region_name"]
         except (ValueError, OSError):
             pass
+
+    sido, sigungu = parse_place_query(region_prefix) if region_prefix else ("", "")
+
+    for step in (radius, 1000, 2000, 3000):
+        if step < radius:
+            continue
+        nearby = await search_restrooms_nearby(
+            latitude,
+            longitude,
+            radius=step,
+            user_type=user_type,
+            open_now=open_now,
+            limit=limit,
+            sido=sido,
+            sigungu=sigungu,
+        )
+        if nearby:
+            return nearby
 
     base_kwargs = dict(
         latitude=latitude,
@@ -244,19 +264,10 @@ async def fetch_restrooms(
         limit=limit,
     )
 
-    # 좌표 반경 검색은 토큰 필터 없이 (POI명이 화장실 데이터에 없어도 근처 결과 반환)
     results = search_records(
         **base_kwargs,
         query_tokens=None,
         strict_region=bool(region_prefix),
-    )
-    if results and any(r.get("distance_m") is not None for r in results):
-        return results
-
-    results = search_records(
-        **base_kwargs,
-        query_tokens=None,
-        strict_region=False,
     )
     if results and any(r.get("distance_m") is not None for r in results):
         return results
@@ -267,9 +278,9 @@ async def fetch_restrooms(
             results = search_records(
                 **base_kwargs,
                 query_tokens=soft_tokens[:1],
-                strict_region=False,
+                strict_region=bool(region_prefix),
             )
-            if results:
+            if results and any(r.get("distance_m") is not None for r in results):
                 return results
 
     if allow_region_fallback and region_prefix:

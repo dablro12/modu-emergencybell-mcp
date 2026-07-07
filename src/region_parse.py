@@ -137,16 +137,23 @@ def regions_match(record_prefix: str, region_hint: str) -> bool:
     if not region_hint:
         return True
     if not record_prefix:
+        return False
+    if record_prefix == region_hint:
         return True
     if record_prefix in region_hint or region_hint in record_prefix:
         return True
-    if sigungu_token(record_prefix) == sigungu_token(region_hint):
-        return True
-    record_parts = set(record_prefix.split())
-    hint_parts = set(region_hint.split())
-    if record_parts & hint_parts:
-        return True
-    return False
+
+    record_sigungu = sigungu_token(record_prefix)
+    hint_sigungu = sigungu_token(region_hint)
+    if record_sigungu and hint_sigungu:
+        return record_sigungu == hint_sigungu
+
+    record_sido = record_prefix.split()[0] if record_prefix.split() else ""
+    hint_sido = region_hint.split()[0] if region_hint.split() else ""
+    if record_sido and hint_sido and record_sido != hint_sido:
+        return False
+
+    return record_sigungu == hint_sigungu if (record_sigungu or hint_sigungu) else False
 
 
 def address_matches_sido(address: str, sido_hint: str) -> bool:

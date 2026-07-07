@@ -71,6 +71,10 @@ async def test_resolve_kakao_keyword_for_station(monkeypatch: pytest.MonkeyPatch
     async def fake_juso(keyword: str, **kwargs):
         return None
 
+    async def fake_poi(query: str):
+        return None
+
+    monkeypatch.setattr("poi_resolver.resolve_dynamic_poi", fake_poi)
     monkeypatch.setattr("place_resolver.geocode_via_kakao_candidates", fake_kakao)
     monkeypatch.setattr("place_resolver.resolve_administrative", fake_juso)
 
@@ -88,6 +92,10 @@ async def test_resolve_warns_on_centroid_fallback(monkeypatch: pytest.MonkeyPatc
     async def fake_juso(keyword: str, **kwargs):
         return None
 
+    async def fake_poi(query: str):
+        return None
+
+    monkeypatch.setattr("poi_resolver.resolve_dynamic_poi", fake_poi)
     monkeypatch.setattr("place_resolver.geocode_via_kakao_candidates", fake_kakao)
     monkeypatch.setattr("place_resolver.resolve_administrative", fake_juso)
     monkeypatch.setattr("place_resolver.lookup_landmark_coords", lambda q: None)

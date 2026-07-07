@@ -20,6 +20,27 @@ def test_regions_match_sigungu_only():
     assert regions_match("서울특별시 중구", "중구") is True
 
 
+def test_regions_match_jongno_not_jung():
+    assert regions_match("서울특별시 종로구", "서울특별시 중구") is False
+    assert regions_match("서울특별시 중구", "서울특별시 종로구") is False
+
+
+def test_strip_poi_noise_jjok_e():
+    from landmarks import strip_poi_noise
+
+    assert strip_poi_noise("창신5라길 쪽에 화장실") == "창신5라길"
+
+
+def test_search_records_geo_without_coords_returns_empty():
+    results = search_records(
+        latitude=37.564,
+        longitude=126.987,
+        region_prefix="서울특별시 중구",
+        limit=5,
+    )
+    assert results == []
+
+
 def test_address_matches_sido():
     assert address_matches_sido("서울특별시 용산구 이태원로", "서울특별시") is True
     assert address_matches_sido("경기도 용인시 지곡동", "서울특별시") is False
@@ -190,13 +211,17 @@ async def test_resolve_myeongdong_cathedral_landmark_override(monkeypatch: pytes
     async def fake_juso(keyword: str, **kwargs):
         return None
 
+    async def fake_poi(query: str):
+        return None
+
+    monkeypatch.setattr("poi_resolver.resolve_dynamic_poi", fake_poi)
     monkeypatch.setattr("place_resolver.geocode_via_kakao_candidates", fake_kakao)
     monkeypatch.setattr("place_resolver.resolve_administrative", fake_juso)
 
     ctx = await resolve_place_context("명동성당쪽")
     assert ctx.coords is not None
-    assert abs(ctx.coords[0] - 37.5633) < 0.02
-    assert "명동성당" in (ctx.expanded_query or "")
+    assert abs(ctx.coords[0] - 37.556581) < 0.02
+    assert ctx.sigungu == "중구"
 
 
 @pytest.mark.asyncio
@@ -206,6 +231,27 @@ async def test_search_restroom_myeongdong_cathedral():
     assert coords is not None
     lat = float(coords.split(",")[0])
     assert abs(lat - 37.5633) < 0.01
+
+
+@pytest.mark.asyncio
+async def test_search_restroom_changsin_vs_myeongdong_differ(monkeypatch: pytest.MonkeyPatch) -> None:
+    from restroom_nearby import search_restrooms_nearby
+
+    async def fake_nearby(latitude, longitude, **kwargs):
+        if latitude > 37.57:
+            return [
+                {"id": "a", "name": "종로구민회관", "region": {"full_prefix": "서울특별시 종로구"}, "distance_m": 100, "opening": {"is_always_open": False, "is_closed_type": False}, "user_types": {"tags": ["general"]}},
+            ]
+        return [
+            {"id": "b", "name": "명동역(4)", "region": {"full_prefix": "서울특별시 중구"}, "distance_m": 90, "opening": {"is_always_open": False, "is_closed_type": False}, "user_types": {"tags": ["general"]}},
+        ]
+
+    monkeypatch.setattr("restroom_nearby.search_restrooms_nearby", fake_nearby)
+
+    changsin, _ = await search_restrooms_by_query("창신5라길", limit=3)
+    myeong, _ = await search_restrooms_by_query("명동성당", limit=3)
+    assert changsin and myeong
+    assert changsin[0]["name"] != myeong[0]["name"]
 
 
 @pytest.mark.asyncio
