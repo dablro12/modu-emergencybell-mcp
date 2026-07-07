@@ -222,6 +222,7 @@ async def fetch_restrooms(
     open_now: bool = False,
     limit: int = 10,
     region_prefix: str = "",
+    allow_region_fallback: bool = True,
 ) -> list[dict[str, Any]]:
     if not region_prefix:
         try:
@@ -244,7 +245,7 @@ async def fetch_restrooms(
     if results and any(r.get("distance_m") is not None for r in results):
         return results
 
-    if region_prefix:
+    if allow_region_fallback and region_prefix:
         region_only = search_records(
             region_prefix=region_prefix,
             user_type=user_type,
@@ -292,6 +293,7 @@ async def search_restrooms_by_query(
                 open_now=open_now,
                 limit=limit,
                 region_prefix=region_prefix,
+                allow_region_fallback=False,
             )
             if results:
                 return results, f"{lat:.6f},{lng:.6f}"
@@ -316,6 +318,18 @@ async def search_restrooms_by_query(
         if results:
             hint = f"{coords[0]:.6f},{coords[1]:.6f}" if coords else None
             return results, hint
+
+    if region_prefix:
+        region_results = search_records(
+            region_prefix=region_prefix,
+            user_type=user_type,
+            open_now=open_now,
+            limit=limit,
+            strict_region=True,
+        )
+        if region_results:
+            hint = f"{coords[0]:.6f},{coords[1]:.6f}" if coords else None
+            return region_results, hint
 
     return [], None
 
