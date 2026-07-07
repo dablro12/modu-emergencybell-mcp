@@ -1,6 +1,6 @@
 # Global KakaoTalk Guide · 글로벌 카카오톡 가이드 · 全球 KakaoTalk 指南
 
-**사용자 가이드:** [README (한국어)](../README.md) · [English](README_Eng.md) · [中文](README_Chi.md)
+**사용자 가이드:** [README (한국어)](../README.md) · [English](README_Eng.md) · [中文](README_Chi.md) · [日本語](README_Jpn.md)
 
 **modu-emergencybell(모두의비상벨)** — 한국에 있는 **모든 사람**을 위한 MCP  
 일반인 · 외국인 · 장애인 · 사회적 약자 · 관광객
@@ -9,7 +9,7 @@
 |---|---|
 | Endpoint | `https://modu-emergencybell-mcp.playmcp-endpoint.kakaocloud.io/mcp` |
 | Tools | 15 (한국 공공데이터 조회) |
-| 입력 | **한국어 · English · 中文** (`user_request` 원문 전달) |
+| 입력 | **한국어 · English · 中文 · 日本語** (`user_request` 원문 전달) |
 | 출력 | Tool은 한국어 마크다운 → **에이전트가 사용자 언어로 번역** |
 
 ---

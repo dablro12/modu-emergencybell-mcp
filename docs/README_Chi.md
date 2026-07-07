@@ -6,7 +6,7 @@
 
 ### 在外面不知所措时——告诉您该打什么电话、该去哪里
 
-[한국어](../README.md) · [English](README_Eng.md) · **中文**
+[한국어](../README.md) · [English](README_Eng.md) · **中文** · [日本語](README_Jpn.md)
 
 <br>
 
@@ -119,6 +119,7 @@
 |------|------|
 | [한국어 README](../README.md) | 韩语用户指南 |
 | [English README](README_Eng.md) | 英语用户指南 |
+| [日本語 README](README_Jpn.md) | 日语用户指南 |
 | [GLOBAL_KAKAOTALK.md](GLOBAL_KAKAOTALK.md) | 多语言测试与详情 |
 
 ---

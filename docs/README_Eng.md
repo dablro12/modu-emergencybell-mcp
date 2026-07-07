@@ -6,7 +6,7 @@
 
 ### When you're stuck outside — know who to call and where to go
 
-[한국어](../README.md) · **English** · [中文](README_Chi.md)
+[한국어](../README.md) · **English** · [中文](README_Chi.md) · [日本語](README_Jpn.md)
 
 <br>
 
@@ -98,7 +98,7 @@ More scenarios → [GLOBAL_KAKAOTALK.md](GLOBAL_KAKAOTALK.md) · `python scripts
 ## Who is it for?
 
 - 🧑‍🤝‍🧑 **Residents** — restrooms, clinics, pharmacies, ER info  
-- 🌏 **Tourists & expats** — ask in **English** (or Chinese)  
+- 🌏 **Tourists & expats** — ask in **English** (or Chinese, Japanese)  
 - ♿ **Accessibility** — wheelchair restrooms, infant care  
 - 🌙 **Night safety** — crime-prevention bells, Safe182 shelters  
 - 🎖️ **Veterans** — entrusted hospitals  
@@ -119,6 +119,7 @@ More scenarios → [GLOBAL_KAKAOTALK.md](GLOBAL_KAKAOTALK.md) · `python scripts
 |-----|---|
 | [한국어 README](../README.md) | Korean user guide |
 | [中文 README](README_Chi.md) | Chinese user guide |
+| [日本語 README](README_Jpn.md) | Japanese user guide |
 | [GLOBAL_KAKAOTALK.md](GLOBAL_KAKAOTALK.md) | Multilingual tests & details |
 
 ---

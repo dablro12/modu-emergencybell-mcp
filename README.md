@@ -6,7 +6,7 @@
 
 ### 밖에서 막막할 때 — 다음에 뭘 하면 되는지 알려드려요
 
-**한국어** · [English](docs/README_Eng.md) · [中文](docs/README_Chi.md)
+**한국어** · [English](docs/README_Eng.md) · [中文](docs/README_Chi.md) · [日本語](docs/README_Jpn.md)
 
 <br>
 
@@ -41,7 +41,7 @@
 | 🌙 **밤길이 무서울 때** | 「성수동 카페거리 밤에 혼자 걷는데 비상벨 어딨어」 |
 | ♿ **휠체어 화장실** | 「강남역 근처 휠체어 화장실」 |
 | 🧳 **지하철 짐 맡기기** | 「서면역 캐리어 맡을 데 있어?」 |
-| 🌍 **외국인 관광객** | 영어·중국어로도 질문 가능 ([English](docs/README_Eng.md) · [中文](docs/README_Chi.md)) |
+| 🌍 **외국인 관광객** | 영·중·일로도 질문 가능 ([English](docs/README_Eng.md) · [中文](docs/README_Chi.md) · [日本語](docs/README_Jpn.md)) |
 
 **한 번에 여러 가지**가 급하면 이렇게요:
 
@@ -58,7 +58,7 @@
 3. 에이전트가 가까운 시설·전화번호·다음 행동을 알려줍니다.
 
 **팁:** 「강남역」「명동성당」「창신동」처럼 **대략적인 위치**만 알려도 됩니다.  
-**팁:** 외국인은 영어·중국어로 물어봐도 됩니다. 주소는 한글로 나와 택시·카운터에 보여주기 좋아요.
+**팁:** 외국인은 영어·중국어·일본어로 물어봐도 됩니다. 주소는 한글로 나와 택시·카운터에 보여주기 좋아요.
 
 ### 개발자 · MCP 연결
 
@@ -117,6 +117,7 @@
 |------|------|
 | [English README](docs/README_Eng.md) | English user guide |
 | [中文 README](docs/README_Chi.md) | 中文用户指南 |
+| [日本語 README](docs/README_Jpn.md) | 日本語ガイド |
 | [GLOBAL_KAKAOTALK.md](docs/GLOBAL_KAKAOTALK.md) | 다국어 상세 · 테스트 |
 | [modu-emergencybell-submit.md](docs/submit_form/modu-emergencybell-submit.md) | AGENTIC PLAYER 10 제출 |
 
