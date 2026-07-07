@@ -11,6 +11,7 @@ import httpx
 from helpers import haversine_m, search_records, search_restrooms_by_query
 from kakao_local import geocode_place
 from landmarks import extract_landmark_search_term
+from map_preview import append_overview_map, enrich_result_lines
 from region_parse import parse_place_query, region_full_prefix
 from subway_facility import find_subway_facility
 
@@ -207,11 +208,13 @@ async def find_accessible_facility(
     )
     if restrooms:
         lines.append(f"### 장애인 이용 가능 공중화장실 ({len(restrooms)}건)")
-        for row in restrooms:
+        append_overview_map(lines, restrooms, title=f"{display_query} 접근성 화장실")
+        for idx, row in enumerate(restrooms, start=1):
             dist = row.get("distance_m")
             dist_text = f" · 약 {dist}m" if dist is not None else ""
             lines.append(f"- **{row['name']}**{dist_text}")
             lines.append(f"  - {row['road_address'] or row['jibun_address']}")
+            enrich_result_lines(lines, name=row["name"], item=row, rank=idx)
         lines.append("")
 
     disabled_rows = await _search_disabled_facilities(
@@ -223,7 +226,8 @@ async def find_accessible_facility(
     )
     if disabled_rows:
         lines.append(f"### 장애인 편의시설 ({len(disabled_rows)}건)")
-        for row in disabled_rows:
+        append_overview_map(lines, disabled_rows, title=f"{display_query} 장애인 편의시설")
+        for idx, row in enumerate(disabled_rows, start=1):
             dist = row.get("distance_m")
             dist_text = f" · 약 {dist}m" if dist is not None else ""
             lines.append(f"- **{row.get('faclNm', '시설')}**{dist_text}")
@@ -233,6 +237,12 @@ async def find_accessible_facility(
                 lines.append(f"  - {row['lcMnad']}")
             if row.get("wfcltId"):
                 lines.append(f"  - ID: `{row['wfcltId']}`")
+            enrich_result_lines(
+                lines,
+                name=row.get("faclNm") or "장애인 편의시설",
+                item=row,
+                rank=idx,
+            )
         if disabled_rows[0].get("wfcltId"):
             detail = await _fetch_detail(disabled_rows[0]["wfcltId"])
             if detail and detail.get("evalInfo"):

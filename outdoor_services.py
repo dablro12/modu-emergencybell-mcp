@@ -35,6 +35,13 @@ SERVICE_ALIASES = {
     "버스정류장": "bus_stop",
     "정류장": "bus_stop",
     "정류소": "bus_stop",
+    "storage": "locker",
+    "luggage_storage": "locker",
+    "luggage": "locker",
+    "locker": "locker",
+    "보관함": "locker",
+    "물품보관함": "locker",
+    "캐리어": "locker",
 }
 
 
@@ -61,7 +68,7 @@ async def find_outdoor_service(
     if kind == "wifi":
         rows = await search_free_wifi(place_query=place_query, limit=limit)
         return format_wifi_list(rows, query=place_query)
-    if kind in ("subway_locker", "locker", "luggage", "luggage_storage", "물품보관함"):
+    if kind in ("subway_locker", "locker"):
         from place_resolver import resolve_place_context
         from subway_facility import find_subway_facility
 

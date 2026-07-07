@@ -64,6 +64,8 @@ def test_service_aliases():
     assert normalize_service("동물병원") == "vet_hospital"
     assert normalize_service("와이파이") == "wifi"
     assert normalize_service("atm") == "atm"
+    assert normalize_service("storage") == "locker"
+    assert normalize_service("캐리어") == "locker"
 
 
 def test_format_wifi_empty():

@@ -11,14 +11,8 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent
 
 FAILURE_MARKERS = (
-    "찾지 못했습니다",
-    "찾을 수 없습니다",
-    "정보를 찾지 못했습니다",
-    "찾으려면 **",
-    "지원하지 않는 service",
     "서비스 오류:",
-    "시설 ID `",
-    "정보를 찾지 못했습니다",
+    "지원하지 않는 service",
 )
 
 # 라우팅·핫라인은 '찾지 못했습니다'가 없어도 정상 응답
@@ -26,6 +20,7 @@ NO_ERROR_TOOLS = frozenset({"get_emergency_hotlines", "get_phrase_card"})
 
 
 def is_failure_text(text: str) -> bool:
+    # "찾지 못했습니다" 류는 정상 검색 결과일 수 있으므로 오류로 승격하지 않는다.
     return any(marker in text for marker in FAILURE_MARKERS)
 
 

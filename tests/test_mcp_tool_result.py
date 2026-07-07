@@ -10,14 +10,20 @@ from place_resolver import looks_like_address, should_juso_first
 
 
 def test_is_failure_text() -> None:
-    assert is_failure_text("명동에 맞는 공중화장실을 찾지 못했습니다.")
+    assert not is_failure_text("명동에 맞는 공중화장실을 찾지 못했습니다.")
+    assert is_failure_text("서비스 오류: timeout")
     assert not is_failure_text("## 검색: 강남역\n### 1. OO화장실")
 
 
 def test_tool_result_sets_is_error() -> None:
-    out = tool_result("결과 없음 — 찾지 못했습니다.")
+    out = tool_result("서비스 오류: timeout")
     assert isinstance(out, CallToolResult)
     assert out.isError is True
+
+
+def test_tool_result_not_found_is_success_text() -> None:
+    out = tool_result("결과 없음 — 찾지 못했습니다.")
+    assert isinstance(out, str)
 
 
 def test_tool_result_success() -> None:
