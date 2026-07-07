@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from kakao_local import coord_to_region, geocode_place
+from kakao_local import coord_to_region
 from helpers import haversine_m
 from region_parse import parse_place_query
 
@@ -109,17 +109,15 @@ async def resolve_region(
     latitude: float | None = None,
     longitude: float | None = None,
 ) -> tuple[str, str, float | None, float | None]:
-    from place_context import expand_place_query
+    from place_resolver import resolve_place_context
 
-    expanded_query = expand_place_query(place_query) if place_query else None
     lat, lng = latitude, longitude
-    if expanded_query and (lat is None or lng is None):
-        try:
-            coords = await geocode_place(expanded_query)
-            if coords:
-                lat, lng = coords
-        except (ValueError, OSError, Exception):
-            pass
+    if place_query:
+        ctx = await resolve_place_context(place_query)
+        if lat is None and ctx.latitude is not None:
+            lat, lng = ctx.latitude, ctx.longitude
+        if ctx.sido and ctx.sigungu:
+            return ctx.sido, ctx.sigungu, lat, lng
 
     if lat is not None and lng is not None:
         try:
@@ -129,11 +127,6 @@ async def resolve_region(
                 return sido, sigungu, lat, lng
         except (ValueError, OSError, Exception):
             pass
-
-    if expanded_query:
-        sido, sigungu = parse_place_query(expanded_query)
-        if sido:
-            return sido, sigungu, lat, lng
 
     raise ValueError(
         f"지역을 특정하지 못했습니다: `{place_query}`. "

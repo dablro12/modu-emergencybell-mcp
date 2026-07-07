@@ -9,6 +9,7 @@ import httpx
 
 from landmarks import lookup_landmark_coords, lookup_landmark_region, lookup_sido_centroid
 from region_parse import (
+    SIDO_ALIASES,
     extract_sido_hint,
     kakao_doc_matches_sido,
     normalize_place_query,
@@ -34,6 +35,13 @@ async def search_keyword(
     radius: int | None = None,
     size: int = 1,
 ) -> list[dict[str, Any]]:
+    if not KAKAO_REST_API_KEY:
+        return []
+    try:
+        headers = _headers()
+    except ValueError:
+        return []
+
     params: dict[str, Any] = {"query": query, "size": min(size, 15)}
     if x is not None and y is not None:
         params["x"] = x
@@ -44,7 +52,7 @@ async def search_keyword(
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(
             f"{KAKAO_LOCAL_BASE}/v2/local/search/keyword.json",
-            headers=_headers(),
+            headers=headers,
             params=params,
         )
         if response.status_code != 200:
@@ -53,10 +61,17 @@ async def search_keyword(
 
 
 async def search_address(query: str, *, size: int = 1) -> list[dict[str, Any]]:
+    if not KAKAO_REST_API_KEY:
+        return []
+    try:
+        headers = _headers()
+    except ValueError:
+        return []
+
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(
             f"{KAKAO_LOCAL_BASE}/v2/local/search/address.json",
-            headers=_headers(),
+            headers=headers,
             params={"query": query, "size": min(size, 10)},
         )
         if response.status_code != 200:
@@ -99,11 +114,127 @@ def _coords_from_document(doc: dict[str, Any]) -> tuple[float, float] | None:
         return float(doc["y"]), float(doc["x"])
     if doc.get("road_address"):
         ra = doc["road_address"]
-        return float(ra["y"]), float(ra["x"])
+        if ra.get("y") and ra.get("x"):
+            return float(ra["y"]), float(ra["x"])
     if doc.get("address"):
         ad = doc["address"]
-        return float(ad["y"]), float(ad["x"])
+        if ad.get("y") and ad.get("x"):
+            return float(ad["y"]), float(ad["x"])
     return None
+
+
+def _normalize_sido_name(name: str) -> str:
+    text = (name or "").strip()
+    if not text:
+        return ""
+    if text in SIDO_ALIASES:
+        return SIDO_ALIASES[text]
+    if any(text.endswith(s) for s in ("특별시", "광역시", "특별자치시", "특별자치도")) or (
+        text.endswith("도") and len(text) <= 5
+    ):
+        return text
+    short_map = {
+        "서울": "서울특별시",
+        "부산": "부산광역시",
+        "대구": "대구광역시",
+        "인천": "인천광역시",
+        "광주": "광주광역시",
+        "대전": "대전광역시",
+        "울산": "울산광역시",
+        "세종": "세종특별자치시",
+        "경기": "경기도",
+        "강원": "강원특별자치도",
+        "충북": "충청북도",
+        "충남": "충청남도",
+        "전북": "전북특별자치도",
+        "전남": "전라남도",
+        "경북": "경상북도",
+        "경남": "경상남도",
+        "제주": "제주특별자치도",
+    }
+    return short_map.get(text, text)
+
+
+def extract_admin_from_document(doc: dict[str, Any]) -> tuple[str, str, str]:
+    """Kakao keyword/address document → (sido, sigungu, dong)."""
+    blocks: list[dict[str, Any]] = []
+    for key in ("road_address", "address"):
+        block = doc.get(key)
+        if isinstance(block, dict):
+            blocks.append(block)
+
+    for block in blocks:
+        sido = _normalize_sido_name(block.get("region_1depth_name", ""))
+        sigungu = (block.get("region_2depth_name") or "").strip()
+        dong = (block.get("region_3depth_name") or "").strip()
+        if sido or sigungu:
+            return sido, sigungu, dong
+
+    address_text = " ".join(
+        str(doc.get(key, "") or "")
+        for key in ("road_address_name", "address_name", "place_name")
+    ).strip()
+    if address_text:
+        parts = address_text.split()
+        if parts:
+            sido = _normalize_sido_name(parts[0])
+            sigungu = parts[1] if len(parts) > 1 and parts[1].endswith(("구", "군", "시")) else ""
+            dong = ""
+            for part in parts[1:]:
+                if part.endswith("동"):
+                    dong = part
+                    break
+            if sido or sigungu:
+                return sido, sigungu, dong
+
+    return "", "", ""
+
+
+async def geocode_via_kakao_candidates(
+    query: str,
+    *,
+    sido_hint: str = "",
+    prefer_keyword: bool = False,
+    anchor: tuple[float, float] | None = None,
+) -> tuple[tuple[float, float] | None, dict[str, Any] | None, str]:
+    """Kakao keyword/address 시도 → (coords, document, source_tag)."""
+    if not KAKAO_REST_API_KEY:
+        return None, None, ""
+
+    normalized = normalize_place_query(query)
+    candidates: list[str] = []
+    for item in (normalized, query.strip()):
+        if item and item not in candidates:
+            candidates.append(item)
+
+    search_order = ("keyword", "address") if prefer_keyword else ("address", "keyword")
+
+    for candidate in candidates:
+        kwargs: dict[str, Any] = {"size": 5}
+        if anchor:
+            kwargs["x"] = anchor[1]
+            kwargs["y"] = anchor[0]
+            kwargs["radius"] = 30_000
+
+        for mode in search_order:
+            try:
+                if mode == "keyword":
+                    documents = await search_keyword(candidate, **kwargs)
+                    source = "kakao_keyword"
+                else:
+                    documents = await search_address(candidate, size=kwargs.get("size", 5))
+                    source = "kakao_address"
+            except (ValueError, OSError):
+                continue
+
+            for doc in documents:
+                if sido_hint and not kakao_doc_matches_sido(doc, sido_hint):
+                    continue
+                coords = _coords_from_document(doc)
+                if coords or extract_admin_from_document(doc)[1]:
+                    return coords, doc, source
+
+    return None, None, ""
 
 
 def _geocode_anchor(query: str, sido_hint: str) -> tuple[float, float] | None:
@@ -162,37 +293,19 @@ async def _geocode_via_kakao(
 
 async def geocode_place(query: str) -> tuple[float, float] | None:
     """장소명/키워드를 WGS84 (latitude, longitude)로 변환."""
-    stripped = query.strip()
-    if not stripped:
-        return None
+    from place_resolver import resolve_place_context
 
-    coords = lookup_landmark_coords(stripped)
-    if coords:
-        return coords
-
-    sido_hint = extract_sido_hint(stripped)
-    anchor = _geocode_anchor(stripped, sido_hint)
-
-    kakao_coords = await _geocode_via_kakao(stripped, sido_hint=sido_hint, anchor=anchor)
-    if kakao_coords:
-        return kakao_coords
-
-    if anchor and sido_hint:
-        return anchor
-
-    normalized = normalize_place_query(stripped)
-    return lookup_landmark_coords(normalized)
+    ctx = await resolve_place_context(query)
+    return ctx.coords
 
 
 async def resolve_place(
     query: str,
 ) -> tuple[float | None, float | None, str]:
     """좌표 + 행정구역 prefix 반환 (자연어 place_query용)."""
-    coords = await geocode_place(query)
-    region_prefix = lookup_landmark_region(query)
-    if not region_prefix:
-        sido, sigungu = parse_place_query(query)
-        region_prefix = region_full_prefix(sido, sigungu)
-    if coords:
-        return coords[0], coords[1], region_prefix
-    return None, None, region_prefix
+    from place_resolver import resolve_place_context
+
+    ctx = await resolve_place_context(query)
+    if ctx.coords:
+        return ctx.latitude, ctx.longitude, ctx.region_prefix
+    return None, None, ctx.region_prefix

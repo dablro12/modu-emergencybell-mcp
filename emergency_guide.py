@@ -17,7 +17,6 @@ from nemc_client import (
 from outdoor_services import find_outdoor_service
 from place_context import (
     classify_intents,
-    expand_place_query,
     extract_place_hint,
     infer_specialty,
     infer_user_type_from_text,
@@ -35,14 +34,16 @@ GUIDE_HEADER = (
 )
 
 
-def _resolve_place(user_request: str, place_query: str | None) -> str:
+async def _resolve_place(user_request: str, place_query: str | None) -> "PlaceContext":
+    from place_resolver import PlaceContext, resolve_place_context
+
     base = (place_query or "").strip() or extract_place_hint(user_request)
     if not base:
         for token in ("서울", "부산", "마포구", "종로구", "강남구", "연제구"):
             if token in user_request:
                 base = token
                 break
-    return expand_place_query(base or "서울")
+    return await resolve_place_context(base or "서울")
 
 
 async def emergency_guide(
@@ -51,9 +52,13 @@ async def emergency_guide(
     language: str = "ko",
 ) -> str:
     """자연어 요청을 해석해 적절한 비상·생활 안내를 한 번에 반환."""
-    place = _resolve_place(user_request, place_query)
+    place_ctx = await _resolve_place(user_request, place_query)
+    place = place_ctx.expanded_query or place_ctx.query
     intents = classify_intents(user_request)
     sections: list[str] = [GUIDE_HEADER, f"**질문**: {user_request.strip()}", f"**기준 지역**: {place}", ""]
+    if place_ctx.warning:
+        sections.append(f"_{place_ctx.warning}_")
+        sections.append("")
 
     now = datetime.now(ZoneInfo("Asia/Seoul"))
     qt, time_note = parse_treatment_day(None, kst=now)

@@ -6,7 +6,7 @@ WORKDIR /app
 COPY server/requirements.txt ./server/requirements.txt
 RUN pip install --no-cache-dir -r server/requirements.txt
 
-COPY modu_emergencybell.py helpers.py hotlines.py nemc_client.py region_parse.py landmarks.py kakao_local.py restroom_parser.py safety_bell.py phrases.py datago_json_client.py subway_facility.py subway_atm.py outdoor_services.py safe182_client.py accessible_facility_client.py ./
+COPY modu_emergencybell.py helpers.py hotlines.py nemc_client.py region_parse.py landmarks.py kakao_local.py juso_client.py place_context.py place_resolver.py emergency_guide.py restroom_parser.py safety_bell.py phrases.py datago_json_client.py subway_facility.py subway_atm.py outdoor_services.py safe182_client.py accessible_facility_client.py ./
 COPY scripts/ ./scripts/
 COPY data/ ./data/
 
@@ -21,11 +21,13 @@ RUN python scripts/process_restroom_data.py && \
 ARG DATA_GO_KR_SERVICE_KEY=""
 ARG DATA_GO_KR_SERVICE_KEY_ENCODED=""
 ARG KAKAO_REST_API_KEY=""
+ARG JUSO_CONFM_KEY=""
 ARG SAFE182_AUTH_ID=""
 ARG SAFE182_AUTH_KEY=""
 ENV DATA_GO_KR_SERVICE_KEY=${DATA_GO_KR_SERVICE_KEY}
 ENV DATA_GO_KR_SERVICE_KEY_ENCODED=${DATA_GO_KR_SERVICE_KEY_ENCODED}
 ENV KAKAO_REST_API_KEY=${KAKAO_REST_API_KEY}
+ENV JUSO_CONFM_KEY=${JUSO_CONFM_KEY}
 ENV SAFE182_AUTH_ID=${SAFE182_AUTH_ID}
 ENV SAFE182_AUTH_KEY=${SAFE182_AUTH_KEY}
 

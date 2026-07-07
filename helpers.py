@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from kakao_local import coord_to_region, geocode_place
+from kakao_local import coord_to_region
 from landmarks import lookup_landmark_coords, lookup_landmark_region
 from region_parse import normalize_place_query, parse_place_query, region_full_prefix, regions_match
 from restroom_parser import is_open_now
@@ -68,7 +68,10 @@ def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 async def geocode(query: str) -> tuple[float, float] | None:
-    return await geocode_place(query)
+    from place_resolver import resolve_place_context
+
+    ctx = await resolve_place_context(query)
+    return ctx.coords
 
 
 def _normalize_user_type(value: str | None) -> str | None:
@@ -259,15 +262,16 @@ async def search_restrooms_by_query(
     normalized = normalize_place_query(query)
     user_type = _normalize_user_type(user_type)
 
-    coords: tuple[float, float] | None = None
-    try:
-        coords = await geocode(query)
-    except (ValueError, OSError):
-        coords = lookup_landmark_coords(query)
+    from place_resolver import resolve_place_context
+
+    ctx = await resolve_place_context(query)
+    coords = ctx.coords
+    region_prefix = ctx.region_prefix or lookup_landmark_region(query) or lookup_landmark_region(
+        normalized
+    )
 
     if coords:
         lat, lng = coords
-        landmark_region = lookup_landmark_region(query) or lookup_landmark_region(normalized)
         results = await fetch_restrooms(
             lat,
             lng,
@@ -275,7 +279,7 @@ async def search_restrooms_by_query(
             user_type=user_type,
             open_now=open_now,
             limit=limit,
-            region_prefix=landmark_region,
+            region_prefix=region_prefix,
         )
         has_distance = any(r.get("distance_m") is not None for r in results)
         if results and has_distance:

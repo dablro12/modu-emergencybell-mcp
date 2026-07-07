@@ -87,7 +87,8 @@ Repository → **Settings** → **Secrets and variables** → **Actions**
 |--------|------|
 | `DATA_GO_KR_SERVICE_KEY` | 공공데이터 (Decoding) |
 | `DATA_GO_KR_SERVICE_KEY_ENCODED` | 공공데이터 (Encoding, NEMC XML용) |
-| `KAKAO_REST_API_KEY` | Kakao Local 지오코딩 |
+| `KAKAO_REST_API_KEY` | Kakao Local (역·상권 POI, 좌표) |
+| `JUSO_CONFM_KEY` | 행안부 도로명주소 검색 (동·구 행정구역) |
 | `SAFE182_AUTH_ID` / `SAFE182_AUTH_KEY` | 경찰청 안전Dream |
 
 ---

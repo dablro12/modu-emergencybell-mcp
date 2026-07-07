@@ -25,8 +25,8 @@ from safe182_client import search_safe_places
 from safety_bell import find_safety_bells_near
 from subway_facility import find_subway_facility
 from emergency_guide import emergency_guide
+from place_resolver import resolve_place_context
 from place_context import (
-    expand_place_query,
     infer_user_type_from_text,
     normalize_safe_category,
     normalize_situation_tag,
@@ -137,7 +137,7 @@ async def find_nearest_restroom(
             effective_type = inferred
     if place_query and (latitude is None or longitude is None):
         restrooms, coords = await search_restrooms_by_query(
-            expand_place_query(place_query),
+            place_query,
             radius,
             user_type=effective_type if effective_type != "general" else None,
             open_now=open_now,
@@ -187,7 +187,7 @@ async def search_restroom(
         if inferred:
             effective_type = inferred
     restrooms, coords = await search_restrooms_by_query(
-        expand_place_query(query),
+        query,
         radius,
         user_type=effective_type if effective_type != "general" else None,
         open_now=open_now,
@@ -217,7 +217,7 @@ async def find_open_clinic(
     """
     specialty = normalize_specialty(specialty)
     return await find_open_clinics_near(
-        place_query=expand_place_query(place_query),
+        place_query=place_query,
         specialty=specialty,
         treatment_day=treatment_day,
         limit=limit,
@@ -240,7 +240,7 @@ async def find_emergency_room(
     Information only — call 119 for life-threatening emergencies.
     """
     return await find_emergency_rooms_near(
-        place_query=expand_place_query(place_query), limit=limit
+        place_query=place_query, limit=limit
     )
 
 
@@ -263,7 +263,7 @@ async def find_open_pharmacy(
     For late-night (새벽/심야), results prioritize 365/24/심야 pharmacies — verify by phone.
     """
     return await find_open_pharmacies_near(
-        place_query=expand_place_query(place_query),
+        place_query=place_query,
         treatment_day=treatment_day,
         pharmacy_name=pharmacy_name,
         limit=limit,
@@ -359,7 +359,7 @@ async def find_safe_place(
     For missing child emergencies, also call 112 / Safe182 182.
     """
     return await search_safe_places(
-        place_query=expand_place_query(place_query),
+        place_query=place_query,
         category=normalize_safe_category(category),
         radius_m=radius_m,
         limit=limit,
@@ -412,7 +412,7 @@ async def find_outdoor_service_tool(
     For lockers prefer find_subway_facility_tool. For vet use vet_hospital not find_open_clinic.
     """
     return await find_outdoor_service(
-        place_query=expand_place_query(place_query),
+        place_query=place_query,
         service=service,
         station_query=station_query,
         wheelchair_accessible=wheelchair_accessible,
