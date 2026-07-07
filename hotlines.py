@@ -63,8 +63,11 @@ def resolve_situation(
     situation_description: str,
     situation: str | None = None,
 ) -> str:
-    if situation and situation in SITUATION_ENUM:
-        return situation
+    from place_context import normalize_situation_tag
+
+    normalized = normalize_situation_tag(situation)
+    if normalized and normalized in SITUATION_ENUM:
+        return normalized
 
     data = load_hotlines_data()
     routing = data.get("situation_routing", {})

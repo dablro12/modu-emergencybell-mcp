@@ -36,6 +36,8 @@ SPECIALTY_CODES = {
     "소아": "D013",
     "pediatrics": "D013",
     "internal": "D001",
+    "internal_medicine": "D001",
+    "내과": "D001",
     "외과": "D002",
     "orthopedic": "D004",
     "obgyn": "D005",
@@ -107,10 +109,13 @@ async def resolve_region(
     latitude: float | None = None,
     longitude: float | None = None,
 ) -> tuple[str, str, float | None, float | None]:
+    from place_context import expand_place_query
+
+    expanded_query = expand_place_query(place_query) if place_query else None
     lat, lng = latitude, longitude
-    if place_query and (lat is None or lng is None):
+    if expanded_query and (lat is None or lng is None):
         try:
-            coords = await geocode_place(place_query)
+            coords = await geocode_place(expanded_query)
             if coords:
                 lat, lng = coords
         except (ValueError, OSError, Exception):
@@ -125,14 +130,14 @@ async def resolve_region(
         except (ValueError, OSError, Exception):
             pass
 
-    if place_query:
-        sido, sigungu = parse_place_query(place_query)
+    if expanded_query:
+        sido, sigungu = parse_place_query(expanded_query)
         if sido:
             return sido, sigungu, lat, lng
 
     raise ValueError(
         f"지역을 특정하지 못했습니다: `{place_query}`. "
-        "**시·구**를 포함해 주세요 (예: `서울 종로구`, `부산 수영구 광안리`)."
+        "**시·구** 또는 **동·역 이름**을 포함해 주세요 (예: `종로구 창신동`, `연산9동`, `강남역`)."
     )
 
 
@@ -421,6 +426,15 @@ async def find_open_clinics_near(
     treatment_day: str | None = None,
     limit: int = 5,
 ) -> str:
+    from place_context import normalize_specialty
+
+    specialty = normalize_specialty(specialty)
+    if specialty == "vet":
+        return (
+            "동물병원은 `find_outdoor_service_tool`(service=`vet_hospital`) 또는 "
+            "`emergency_guide_tool`을 사용하세요. `find_open_clinic`은 사람 병원 전용입니다."
+        )
+
     sido, sigungu, lat, lng = await resolve_region(
         place_query=place_query,
         latitude=latitude,

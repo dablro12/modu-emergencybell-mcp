@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""12개 MCP Tool 상황별 스모크 테스트."""
+"""13개 MCP Tool 상황별 스모크 테스트."""
 
 from __future__ import annotations
 
@@ -19,6 +19,12 @@ load_dotenv(ROOT / ".env")
 import modu_emergencybell as mcp  # noqa: E402
 
 SCENARIOS: list[tuple[str, str, dict, str]] = [
+    (
+        "emergency_guide_tool",
+        "집에서 가스 냄새",
+        {"user_request": "집에서 가스 냄새가 날 때", "place_query": "서울"},
+        "1544",
+    ),
     (
         "get_emergency_hotlines",
         "119랑 1339 차이? 아이가 열이 나요",
@@ -68,10 +74,22 @@ SCENARIOS: list[tuple[str, str, dict, str]] = [
         "hospital",
     ),
     (
+        "find_open_pharmacy",
+        "창신동만으로 약국 (동→구 자동)",
+        {"place_query": "창신동", "limit": 3},
+        "약국",
+    ),
+    (
+        "find_open_clinic",
+        "연산9동 내과 (동→구 자동)",
+        {"place_query": "연산9동", "specialty": "internal_medicine", "limit": 3},
+        "의원",
+    ),
+    (
         "find_subway_facility_tool",
-        "강남역 물품보관함",
-        {"station_query": "강남역", "facility_type": "all", "limit": 3},
-        "물품보관함",
+        "서울역 엘리베이터 (alias)",
+        {"station_query": "서울역", "facility_type": "elevator", "limit": 3},
+        "접근",
     ),
     (
         "find_safe_place",

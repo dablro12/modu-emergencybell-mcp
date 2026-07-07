@@ -48,6 +48,16 @@ async def find_outdoor_service(
     if kind == "wifi":
         rows = await search_free_wifi(place_query=place_query, limit=limit)
         return format_wifi_list(rows, query=place_query)
+    if kind in ("subway_locker", "locker", "luggage", "luggage_storage", "물품보관함"):
+        from place_context import expand_place_query
+        from subway_facility import find_subway_facility
+
+        station = station_query or place_query
+        return find_subway_facility(
+            expand_place_query(station),
+            facility_type="locker",
+            limit=limit,
+        )
     if kind == "vet_hospital":
         rows = await search_vet_hospitals(place_query=place_query, limit=limit)
         return format_vet_list(rows, query=place_query)

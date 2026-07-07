@@ -149,6 +149,12 @@ async def find_accessible_facility(
     include_subway: bool = True,
     limit: int = 5,
 ) -> str:
+    from place_context import expand_place_query, is_valid_wfclt_id
+
+    place_query = expand_place_query(place_query)
+    if facility_id and not is_valid_wfclt_id(facility_id):
+        facility_id = None
+
     if facility_id:
         detail = await _fetch_detail(facility_id)
         if not detail:

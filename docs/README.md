@@ -106,6 +106,7 @@ PlayMCP 등록·심사용 문서입니다. 기술 배포는 [DEPLOY_KC.md](./DEP
 
 | 문서 | 설명 |
 |------|------|
+| [modu-emergencybell.md](./modu-emergencybell.md) | KC·PlayMCP·예선 제출 폼 정리 |
 | [PLAN.md](./PLAN.md) | 기획·포지션·로드맵 |
 | [DEPLOY_KC.md](./DEPLOY_KC.md) | KC 이미지 배포·Secrets |
 | [kakao_guide/](./kakao_guide/) | PlayMCP 심사·등록 가이드 |

@@ -59,6 +59,9 @@ def find_subway_facility(
     facility_type: str = "all",
     limit: int = 5,
 ) -> str:
+    from place_context import normalize_facility_type
+
+    facility_type = normalize_facility_type(facility_type)
     station = _match_station(station_query)
     if not station:
         return (
