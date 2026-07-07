@@ -143,7 +143,13 @@ async def test_disabled_facility_detail_live():
 
 @pytest.mark.asyncio
 async def test_accessible_facility_offline():
+    from unittest.mock import AsyncMock, patch
+
     from accessible_facility_client import find_accessible_facility
 
-    text = await find_accessible_facility(place_query="강남역", include_subway=True, limit=3)
+    with patch(
+        "accessible_facility_client._search_disabled_facilities",
+        new=AsyncMock(return_value=[]),
+    ):
+        text = await find_accessible_facility(place_query="강남역", include_subway=True, limit=3)
     assert "접근성" in text or "화장실" in text or "지하철" in text
