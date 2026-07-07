@@ -35,6 +35,7 @@ from place_context import (
     normalize_specialty,
 )
 from tool_descriptions import tool_description
+from map_preview import register_map_routes
 
 load_dotenv()
 
@@ -428,6 +429,7 @@ async def find_outdoor_service_tool(
     )
 
 
+register_map_routes(mcp)
 install_tool_error_wrapping(mcp)
 
 

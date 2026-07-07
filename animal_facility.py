@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from helpers import haversine_m
+from map_preview import append_overview_map, enrich_result_lines
 from place_resolver import resolve_place_context
 
 AnimalKind = Literal["hospital", "pharmacy"]
@@ -144,6 +145,8 @@ def format_animal_list(
         lines.append(f"- 검색 반경: **{radius_used}m**")
     lines.append("")
 
+    append_overview_map(lines, rows, title=f"{query} 근처 {label}")
+
     for idx, row in enumerate(rows, start=1):
         addr = row.get("road_addr") or row.get("lot_addr") or ""
         lines.append(f"### {idx}. {row['name']} · 약 {row['distance_m']}m")
@@ -151,6 +154,7 @@ def format_animal_list(
         phone = _format_phone(row.get("phone") or "")
         if phone:
             lines.append(f"- **전화**: {phone}")
+        enrich_result_lines(lines, name=row["name"], item=row, rank=idx)
         lines.append("")
 
     lines.append(DISCLAIMER)

@@ -11,6 +11,7 @@ from typing import Any
 from kakao_local import coord_to_region
 from landmarks import lookup_landmark_coords, lookup_landmark_region
 from region_parse import normalize_place_query, parse_place_query, region_full_prefix, regions_match
+from map_preview import append_overview_map, enrich_result_lines
 from restroom_parser import is_open_now
 
 RESTROOM_RADIUS_STEPS = (500, 1000, 2000, 3000)
@@ -345,6 +346,7 @@ def format_restroom_list(
         lines.append(f"## 검색: {query}")
     if coords_hint:
         lines.append(f"- 기준 좌표: {coords_hint}")
+    append_overview_map(lines, restrooms, title=f"{query or '검색'} 근처 화장실")
     lines.append("")
 
     for idx, r in enumerate(restrooms, start=1):
@@ -378,6 +380,7 @@ def format_restroom_list(
             lines.append(f"- **기저귀 교환대**: {fac['diaper_station_location'] or '있음'}")
         if r.get("phone"):
             lines.append(f"- **전화**: {r['phone']}")
+        enrich_result_lines(lines, name=r["name"], item=r, rank=idx)
         lines.append(f"- **ID**: `{r['id']}`")
         lines.append("")
 

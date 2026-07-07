@@ -9,6 +9,7 @@ from typing import Any
 
 from crime_stats import format_crime_stats_brief, lookup_from_place
 from helpers import haversine_m
+from map_preview import append_overview_map, enrich_result_lines
 from kakao_local import coord_to_region, geocode_place, resolve_place
 from landmarks import lookup_landmark_coords, lookup_landmark_region
 from region_parse import (
@@ -27,7 +28,7 @@ RADIUS_STEPS = (500, 1000, 2000, 3000)
 
 SAFETY_BELL_DISCLAIMER = (
     "⚠️ **안내**: 범죄예방용 **길·공원 안전비상벨** 위치입니다. "
-    "화장실 벽 비상벨(`search_restroom` · `user_type=elderly_safety`)과 다릅니다. "
+    "화장실 벽 비상벨(`find_nearest_restroom` · `user_type=elderly_safety`)과 다릅니다. "
     "**119 신고 대행·발신 없음.** 생명이 위협되면 **112**(범죄) 또는 **119**(응급)에 직접 전화하세요."
 )
 
@@ -100,7 +101,7 @@ def format_safety_bell_list(
         return (
             f"**{hint}** 근처에서 안전비상벨을 찾지 못했습니다.\n"
             "- **구/군 + 랜드마크**로 다시 시도해 보세요 (예: `서울 용산구 이태원`, `부산 광안리`).\n"
-            "- 화장실 **벽 비상벨**은 `search_restroom`(user_type=elderly_safety)을 사용하세요.\n\n"
+            "- 화장실 **벽 비상벨**은 `find_nearest_restroom`(user_type=elderly_safety)을 사용하세요.\n\n"
             f"{SAFETY_BELL_DISCLAIMER}"
         )
 
@@ -114,6 +115,8 @@ def format_safety_bell_list(
     if region_mismatch:
         lines.append("- ⚠️ 일부 결과가 요청 지역과 다를 수 있어 **주소를 꼭 확인**하세요.")
     lines.append("")
+
+    append_overview_map(lines, bells, title=f"{query or '검색'} 근처 안전비상벨")
 
     for idx, bell in enumerate(bells, start=1):
         addr = _bell_address(bell)
@@ -137,6 +140,8 @@ def format_safety_bell_list(
             lines.append(f"- **관리**: {bell['mgmt_org']}")
         if bell["mgmt_tel"]:
             lines.append(f"- **관리 연락처**: {bell['mgmt_tel']}")
+        label = bell["place_type"] or "안전비상벨"
+        enrich_result_lines(lines, name=label, item=bell, rank=idx)
         lines.append("")
 
     lines.append(SAFETY_BELL_DISCLAIMER)
