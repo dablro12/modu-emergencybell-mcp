@@ -6,6 +6,12 @@ import re
 from typing import Any
 
 from landmarks import resolve_landmark_poi, strip_poi_noise
+from i18n_support import (
+    EN_PLACE_NOISE,
+    ZH_PLACE_NOISE,
+    foreign_intent_keywords,
+    resolve_foreign_station,
+)
 from region_parse import SIDO_ALIASES, parse_place_query, region_full_prefix
 
 DONG_EXACT: dict[str, str] = {
@@ -110,6 +116,8 @@ PLACE_NOISE_TOKENS = frozenset({
     "화장실알려줘",
     "알려줘",
     "찾아줘",
+    *EN_PLACE_NOISE,
+    *ZH_PLACE_NOISE,
 })
 
 REGION_FALLBACK_TOKENS = (
@@ -173,13 +181,19 @@ def is_valid_wfclt_id(value: str | None) -> bool:
 
 def infer_user_type_from_text(text: str) -> str | None:
     lowered = text.lower()
-    if any(k in text for k in ("휠체어", "장애인 화장실", "wheelchair", "accessible restroom")):
+    if any(
+        k in text or k in lowered
+        for k in ("휠체어", "장애인 화장실", "wheelchair", "accessible restroom", "轮椅", "无障碍")
+    ):
         return "wheelchair"
-    if any(k in text for k in ("기저귀", "수유", "infant", "diaper", "유아")):
+    if any(k in text or k in lowered for k in ("기저귀", "수유", "infant", "diaper", "유아", "婴儿")):
         return "infant_care"
-    if any(k in text for k in ("비상벨", "벨 있는", "emergency bell", "safety bell")) and "화장실" in text:
+    if any(
+        k in text or k in lowered
+        for k in ("비상벨", "벨 있는", "emergency bell", "safety bell")
+    ) and any(k in text for k in ("화장실", "restroom", "toilet", "厕所")):
         return "elderly_safety"
-    if any(k in text for k in ("어린이", "child", "kids")):
+    if any(k in text or k in lowered for k in ("어린이", "child", "kids", "儿童")):
         return "child"
     return None
 
@@ -196,6 +210,10 @@ def extract_place_from_text(text: str) -> str:
         return ""
 
     cleaned = strip_poi_noise(stripped)
+
+    station = resolve_foreign_station(cleaned) or resolve_foreign_station(stripped)
+    if station:
+        return station
 
     poi = resolve_landmark_poi(cleaned) or resolve_landmark_poi(stripped)
     if poi:
@@ -327,18 +345,22 @@ def expand_place_query(query: str) -> str:
 
 
 def classify_intents(text: str) -> list[str]:
-    """Return ordered intent tags from user text."""
+    """Return ordered intent tags from user text (한·영·중)."""
     lowered = text.lower()
     intents: list[str] = []
+    fk = foreign_intent_keywords()
 
     def add(tag: str) -> None:
         if tag not in intents:
             intents.append(tag)
 
-    if any(k in text for k in ("119", "112", "1339", "182", "전화", "신고", "실종", "가스", "누출", "독극물")):
+    if any(
+        k in text or k in lowered
+        for k in ("119", "112", "1339", "182", "전화", "신고", "실종", "가스", "누출", "독극물", *fk["hotlines_en"], *fk["hotlines_zh"])
+    ):
         add("hotlines")
     if any(
-        k in text
+        k in text or k in lowered
         for k in (
             "화장실",
             "restroom",
@@ -349,13 +371,18 @@ def classify_intents(text: str) -> list[str]:
             "대변",
             "오줌",
             "배변",
+            *fk["restroom_en"],
+            *fk["restroom_zh"],
         )
-    ) or "restroom" in lowered:
+    ):
         add("restroom")
-    if any(k in text for k in ("안전비상벨", "범죄예방", "safety bell")) and "화장실" not in text:
+    if any(
+        k in text or k in lowered
+        for k in ("안전비상벨", "범죄예방", "safety bell")
+    ) and not any(k in text for k in ("화장실", "restroom", "toilet", "厕所")):
         add("safety_bell")
     if any(
-        k in text
+        k in text or k in lowered
         for k in (
             "범죄",
             "치안",
@@ -370,35 +397,52 @@ def classify_intents(text: str) -> list[str]:
             "절도",
             "성범죄",
             "추행",
+            *fk["safety_en"],
+            *fk["safety_zh"],
         )
     ):
         add("crime_stats")
-    if any(k in text for k in ("약국", "pharmacy")):
+    if any(k in text or k in lowered for k in ("약국", "pharmacy", *fk["pharmacy_en"], *fk["pharmacy_zh"])):
         add("pharmacy")
-    if any(k in text for k in ("응급실", "병상", "emergency room")):
+    if any(
+        k in text or k in lowered
+        for k in ("응급실", "병상", "emergency room", *fk["emergency_en"], *fk["emergency_zh"])
+    ):
         add("emergency_room")
     if any(
-        k in text
-        for k in ("소아과", "병원", "의원", "진료", "clinic", "내과", "39도", "열")
+        k in text or k in lowered
+        for k in ("소아과", "병원", "의원", "진료", "clinic", "내과", "39度", "39도", "열", "fever", *fk["clinic_en"], *fk["clinic_zh"])
     ) and not any(k in text for k in VETERAN_KEYWORDS):
         add("clinic")
-    if any(k in text for k in ("물품보관함", "짐 맡", "locker", "luggage")):
+    if any(
+        k in text or k in lowered
+        for k in ("물품보관함", "짐 맡", "locker", "luggage", *fk["locker_en"], *fk["locker_zh"])
+    ):
         add("subway_locker")
-    if any(k in text for k in ("엘리베이터", "휠체어", "접근", "장애인", "elevator", "wheelchair")):
+    if any(
+        k in text or k in lowered
+        for k in ("엘리베이터", "휠체어", "접근", "장애인", "elevator", "wheelchair", *fk["accessible_en"], *fk["accessible_zh"])
+    ):
         add("accessible")
-    if any(k in text for k in ("ATM", "atm", "현금인출")):
+    if any(k in text or k in lowered for k in ("ATM", "atm", "현금인출")):
         add("atm")
-    if any(k in text for k in ("와이파이", "wifi", "wi-fi")):
+    if any(k in text or k in lowered for k in ("와이파이", "wifi", "wi-fi", *fk["wifi_en"], *fk["wifi_zh"])):
         add("wifi")
-    if any(k in text for k in ("버스정류장", "버스 정류장", "정류장", "정류소", "bus stop")):
+    if any(
+        k in text or k in lowered
+        for k in ("버스정류장", "버스 정류장", "정류장", "정류소", "bus stop", *fk["bus_en"], *fk["bus_zh"])
+    ):
         add("bus_stop")
     if any(k in text for k in VETERAN_KEYWORDS):
         add("veteran_hospital")
-    if any(k in text for k in ("동물병원", "vet", "veterinary")):
+    if any(k in text or k in lowered for k in ("동물병원", "vet", "veterinary", *fk["vet_en"], *fk["vet_zh"])):
         add("vet")
-    if any(k in text for k in ("안전지킴이", "쉼터", "safe182", "아동안전")):
+    if any(k in text or k in lowered for k in ("안전지킴이", "쉼터", "safe182", "아동안전")):
         add("safe_place")
-    if any(k in text for k in ("phrase", "phrase card", "문장", "foreign", "tourist", "관광객")):
+    if any(
+        k in text or k in lowered
+        for k in ("phrase card", "show to staff", "店员", "怎么说", "怎么说")
+    ):
         add("phrase")
 
     if not intents:

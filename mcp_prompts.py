@@ -102,15 +102,18 @@ def register_prompts(mcp: FastMCP) -> None:
     @mcp.prompt(
         name="foreign_tourist_help",
         title="외국인 관광객 병원·약국",
-        description="get_phrase_card + find_open_clinic/pharmacy.",
+        description="Multilingual user_request + find_open_clinic/pharmacy/restroom.",
     )
     def foreign_tourist_help(user_message: str, place: str = "Myeongdong") -> str:
         return (
             f"User: {user_message}\nPlace: {place}\n\n"
-            "1. `get_phrase_card` — scenario=hospital_visit or pharmacy_visit, language=en.\n"
-            "   Allergy question → scenario=pharmacy_allergy_check.\n"
-            f"2. `find_nearest_restroom` or `find_open_clinic` — place_query=\"{place}\", user_request=원문.\n"
-            "3. `emergency_guide_tool` for combined help."
+            "The user may write in **English, Chinese, or Korean**. "
+            "Pass the full original text in `user_request` on every tool call.\n"
+            "1. `classify_emergency_intent`(user_request=original message) if tool choice is unclear.\n"
+            f"2. `find_nearest_restroom` / `find_open_clinic` / `find_open_pharmacy` — "
+            f"place_query=\"{place}\", user_request=original message.\n"
+            "3. `emergency_guide_tool` for combined help.\n"
+            "4. Translate the final answer to the user's language; **keep Korean addresses**."
         )
 
     @mcp.prompt(

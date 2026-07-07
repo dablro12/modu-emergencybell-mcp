@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from i18n_support import agent_translation_hint, detect_input_language
 from place_context import (
     classify_intents,
     extract_place_from_text,
@@ -84,6 +85,12 @@ def format_intent_routing(
         lines.append(f"- **서버 추출 장소**: `{extracted}`")
     if merged_place:
         lines.append(f"- **해석 기준 지역**: `{merged_place}`")
+
+    lang = detect_input_language(user_request)
+    lines.append(f"- **입력 언어(추정)**: `{lang}`")
+    hint = agent_translation_hint(lang)
+    if hint:
+        lines.append(f"- **에이전트**: {hint}")
 
     lines.append("")
     lines.append("### 감지된 의도")
