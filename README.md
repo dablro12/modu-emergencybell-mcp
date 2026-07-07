@@ -192,6 +192,30 @@ python scripts/global_tool_tests.py
 
 ---
 
+## Repository layout
+
+```
+modu-emergencybell-mcp/
+├── README.md              # 이 문서
+├── Dockerfile             # PlayMCP KC 이미지
+├── modu_emergencybell.py    # MCP 서버 진입점
+├── *.py                   # 도메인 모듈
+├── assets/                # 앱 아이콘
+├── data/
+│   ├── sources/           # 공중화장실 원본 CSV (1개)
+│   ├── toilet_data/       # 화장실 JSON 색인
+│   ├── emergencybell/     # 안전비상벨·치안 JSON
+│   ├── subway/            # 지하철·ATM JSON
+│   ├── hotlines/          # 핫라인 JSON
+│   └── phrases/           # 문장 카드 JSON
+├── docs/                  # 배포·테스트·제출 문서
+├── scripts/               # 데이터 가공 · 스모크 테스트
+├── server/requirements.txt
+└── tests/
+```
+
+---
+
 ## 문서
 
 | 문서 | 내용 |
@@ -200,8 +224,6 @@ python scripts/global_tool_tests.py
 | [docs/KAKAOTALK_TOOL_TESTS.md](docs/KAKAOTALK_TOOL_TESTS.md) | 카톡 스타일 한국어 테스트 |
 | [docs/TOOL_EXAMPLES.md](docs/TOOL_EXAMPLES.md) | JSON 호출 예제 |
 | [docs/submit_form/modu-emergencybell-submit.md](docs/submit_form/modu-emergencybell-submit.md) | AGENTIC PLAYER 10 제출 |
-
----
 
 <div align="center">
 

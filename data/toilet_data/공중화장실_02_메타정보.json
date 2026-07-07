@@ -1,5 +1,5 @@
 {
-  "source_file": "공중화장실정보.csv",
+  "source_file": "public_restroom.csv",
   "source_encoding": "utf-8",
   "source_agency": "행정안전부 공중화장실 표준데이터",
   "total_records": 59757,

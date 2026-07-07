@@ -10,20 +10,16 @@ COPY modu_emergencybell.py helpers.py hotlines.py nemc_client.py region_parse.py
 COPY scripts/ ./scripts/
 COPY data/ ./data/
 
+# Indexes: JSON in repo where possible; rebuild restroom + optional API indexes at image build
 RUN python scripts/process_restroom_data.py && \
     test -f data/toilet_data/공중화장실_01_전체레코드.json && \
-    python scripts/process_subway_data.py && \
     test -f data/subway/subway_index.json && \
-    python scripts/process_subway_atm_data.py && \
     test -f data/subway/subway_atm_index.json && \
-    python scripts/process_crime_stats_data.py && \
     test -f data/emergencybell/crime_stats_index.json && \
-    python scripts/process_bus_stop_data.py && \
-    test -f data/bus/bus_stop_index.json && \
-    python scripts/process_veteran_hospital_data.py && \
-    test -f data/medical/veteran_hospital_index.json
+    test -f data/emergencybell/safety_bell_records.json && \
+    (test -f data/bus/bus_stop_index.json || python scripts/process_bus_stop_data.py) && \
+    (test -f data/medical/veteran_hospital_index.json || python scripts/process_veteran_hospital_data.py)
 
-# CI/GitHub Secrets → build-arg 로 주입 (공개 repo에 키 커밋 금지)
 ARG DATA_GO_KR_SERVICE_KEY=""
 ARG DATA_GO_KR_SERVICE_KEY_ENCODED=""
 ARG ODCLOUD_SERVICE_KEY=""
