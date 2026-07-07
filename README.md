@@ -1,234 +1,131 @@
 <div align="center">
 
-<img src="assets/app_icon.png" width="128" alt="모두의비상벨 앱 아이콘" />
+<img src="assets/app_icon.png" width="120" alt="모두의비상벨" />
 
-# modu-emergencybell · 모두의비상벨
+# 모두의비상벨
 
-### 밖에서 급할 때 — 누구에게 전화하고, 어디로 가야 하는지
+### 밖에서 막막할 때 — 다음에 뭘 하면 되는지 알려드려요
 
-[![PlayMCP](https://img.shields.io/badge/PlayMCP-Registered-FEE500?style=for-the-badge&logo=kakaotalk&logoColor=000)](https://playmcp.kakaocloud.io)
-[![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP-6366f1?style=for-the-badge)](https://modelcontextprotocol.io)
-[![Tools](https://img.shields.io/badge/Tools-15-22c55e?style=for-the-badge)](docs/TOOL_EXAMPLES.md)
-[![Global](https://img.shields.io/badge/Global-KO·EN·ZH-f97316?style=for-the-badge)](docs/GLOBAL_KAKAOTALK.md)
-[![Tests](https://img.shields.io/badge/pytest-90%2B-0ea5e9?style=for-the-badge)](scripts/kakaotalk_tool_tests.py)
+**한국어** · [English](docs/README_Eng.md) · [中文](docs/README_Chi.md)
 
 <br>
 
-> **카카오 2026 AGENTIC PLAYER 10 대회 · 예선 제출 MCP 서버**
->
-> PlayMCP · **한국에 있는 모든 사람**을 위한 공공데이터 비상·생활 안내
+[![PlayMCP](https://img.shields.io/badge/PlayMCP-사용_가능-FEE500?style=flat-square)](https://playmcp.kakaocloud.io)
+[![AGENTIC PLAYER 10](https://img.shields.io/badge/카카오_2026-AGENTIC_PLAYER_10-000?style=flat-square&logo=kakaotalk&logoColor=FEE500)](https://playmcp.kakaocloud.io)
 
-<br>
-
-| | |
-|---|---|
-| **서비스명** | 모두의비상벨 — 밖에서 막막할 때 |
-| **MCP 식별자** | `modu-emergencybell` |
-| **Endpoint** | `https://modu-emergencybell-mcp.playmcp-endpoint.kakaocloud.io/mcp` |
-| **입력 언어** | 한국어 · English · 中文 (`user_request` 원문) |
-| **전송** | Streamable HTTP · 인증 없음 |
-
-**English / 中文** → [docs/GLOBAL_KAKAOTALK.md](docs/GLOBAL_KAKAOTALK.md)
+> 카카오톡에서 **한 마디**로 급할 때 필요한 정보를 찾는 비상·생활 도우미입니다.  
+> **일반인 · 외국인 · 장애인 · 사회적 약자** 모두 사용할 수 있습니다.
 
 </div>
 
 ---
 
-## 한 줄 소개
+## 이게 뭐예요?
 
-카카오톡에서 **「명동성당쪽 급똥」**, **「Wheelchair restroom near Myeongdong」**, **「明洞圣堂附近厕所」** 한 마디로  
-**119·112·1339·1544**, **화장실·약국·응급실·안전비상벨·지하철 보관함·WiFi**까지 연결하는 **포용형 공공데이터 MCP**입니다.
+한국 밖에서 갑자기 급할 때 — **어디에 전화하고, 어디로 가야 하는지** 막막하잖아요.
 
-> **일반인 · 외국인 · 장애인 · 사회적 약자 · 관광객** — 모두 같은 Tool 15개로 안내받을 수 있습니다.
+**모두의비상벨**은 카카오톡 에이전트와 연결하면, 말하듯이 물어보기만 해도 **119·112·1339 안내**, **가까운 화장실·약국·응급실**, **밤길 안전비상벨**, **지하철 짐 보관함**, **무료 WiFi** 같은 **실제 공공데이터**를 바탕으로 알려줍니다.
 
----
-
-## 글로벌 카카오톡 (KO · EN · ZH)
-
-Tool 내부는 한국 공공 API 기준이지만, **입력은 다국어**로 받습니다.
-
-```
-외국어/한국어 메시지
-    → user_request 원문을 Tool에 전달
-    → 서버: 장소·의도 추출 (Myeongdong / 明洞 / 강남역)
-    → 한국어 공공데이터 조회 (주소·시설명은 한글 유지)
-    → 에이전트가 사용자 언어로 최종 번역
-```
-
-| 언어 | 예시 메시지 |
-|------|-------------|
-| 🇰🇷 | `명동성당쪽 급똥 화장실` |
-| 🇺🇸 | `Wheelchair restroom near Myeongdong Cathedral` |
-| 🇨🇳 | `明洞圣堂附近哪里有轮椅厕所？` |
-
-상세 가이드 · Tool별 예시 → **[docs/GLOBAL_KAKAOTALK.md](docs/GLOBAL_KAKAOTALK.md)**
-
-```bash
-python scripts/global_tool_tests.py   # 영·중 15건
-python scripts/kakaotalk_tool_tests.py  # 한국어 15건
-```
+> 전화를 대신 걸거나, 진단·신고를 대신하지는 않아요. **정보 안내**만 합니다.
 
 ---
 
-## 왜 이 MCP인가
+## 이런 때 써보세요
 
-| 설계 포인트 | 설명 |
-|-------------|------|
-| **포용·글로벌** | 한·영·중 `user_request` + 랜드마크·역명 다국어 해석 |
-| **의도 라우팅** | `classify_emergency_intent` — Tool 선택 + 입력 언어 힌트 |
-| **통합 진입점** | `emergency_guide_tool` — 자연어 → 다중 공공 API |
-| **카톡 원문 복구** | `place_query` 비어 있어도 서버가 장소·의도 추출 |
-| **지오코딩 2트랙** | 주소형 → **juso 1순위** · 랜드마크 → Kakao + 보정 |
-| **MCP 권장 패턴** | 실패 시 **`isError: true`** |
+| 상황 | 이렇게 물어보세요 |
+|------|-------------------|
+| 🚽 **급한 화장실** | 「명동성당 쪽인데 화장실 급해」 |
+| 💊 **밤·주말 약국** | 「종로3가 일요일 아침 약국 어디 있어?」 |
+| 🌡️ **아이가 아플 때** | 「새벽에 아이 39도인데 마포구 소아과·약국」 |
+| 📞 **어디에 전화?** | 「가스 냄새 나는데 119야 1544야?」 |
+| 🌙 **밤길이 무서울 때** | 「성수동 카페거리 밤에 혼자 걷는데 비상벨 어딨어」 |
+| ♿ **휠체어 화장실** | 「강남역 근처 휠체어 화장실」 |
+| 🧳 **지하철 짐 맡기기** | 「서면역 캐리어 맡을 데 있어?」 |
+| 🌍 **외국인 관광객** | 영어·중국어로도 질문 가능 ([English](docs/README_Eng.md) · [中文](docs/README_Chi.md)) |
 
-> 정보 안내 전용 — 전화 연결·진단·신고 대행을 하지 않습니다.
+**한 번에 여러 가지**가 급하면 이렇게요:
 
----
-
-## MCP Primitives
-
-| Primitive | 개수 | 비고 |
-|-----------|------|------|
-| **Tools** | 15 | 카카오 권장 3~20개 |
-| **Prompts** | 12 | 시나리오별 호출 가이드 |
-
-### Tools
-
-| Tool | 역할 |
-|------|------|
-| `classify_emergency_intent` | 의도 · Tool · 장소 · **입력 언어** 추정 |
-| `emergency_guide_tool` | **통합 진입점** |
-| `get_emergency_hotlines` | 119 / 112 / 1339 / 1544 |
-| `find_nearest_restroom` | 공중화장실 (`wheelchair` 등 자동) |
-| `search_restroom` | 지역명·유형별 화장실 |
-| `find_open_clinic` | 요일별 진료 병원 |
-| `find_veteran_hospital` | 보훈 위탁병원 |
-| `find_emergency_room` | 응급실 병상 |
-| `find_open_pharmacy` | 요일별 약국 |
-| `find_safety_bell` | 안전비상벨 + 치안 통계 |
-| `get_phrase_card` | 현장용 문장 카드 (선택) |
-| `find_subway_facility_tool` | 물품보관함 · 엘리베이터 |
-| `find_safe_place` | Safe182 아동안전지킴이집 |
-| `find_accessible_facility_tool` | 장애인 편의시설 |
-| `find_outdoor_service_tool` | ATM · WiFi · 동물병원 · 버스 |
+> 「익선동인데 엄마 무릎에서 피 나 — 응급실이랑 약국 알려줘」
 
 ---
 
-## 바로 써보기
+## 어떻게 쓰나요?
 
-**한국어**
-```
-새벽에 아이 39도인데 마포구 소아과·약국
-```
+### 카카오톡 · PlayMCP 사용자
 
-**English**
-```
-Wheelchair restroom near Myeongdong Cathedral — urgent!
-```
+1. PlayMCP에서 **모두의비상벨** MCP를 연결합니다.
+2. 평소 카톡하듯 **위치 + 상황**을 한 문장으로 보냅니다.
+3. 에이전트가 가까운 시설·전화번호·다음 행동을 알려줍니다.
 
-**中文**
-```
-弘大附近有免费 WiFi 吗？
-```
+**팁:** 「강남역」「명동성당」「창신동」처럼 **대략적인 위치**만 알려도 됩니다.  
+**팁:** 외국인은 영어·중국어로 물어봐도 됩니다. 주소는 한글로 나와 택시·카운터에 보여주기 좋아요.
 
-```json
-{
-  "name": "find_nearest_restroom",
-  "arguments": {
-    "user_request": "Wheelchair restroom near Myeongdong Cathedral — urgent!"
-  }
-}
-```
+### 개발자 · MCP 연결
+
+| 항목 | 값 |
+|------|-----|
+| Endpoint | `https://modu-emergencybell-mcp.playmcp-endpoint.kakaocloud.io/mcp` |
+| 식별자 | `modu-emergencybell` |
+
+기술 문서 → [docs/DEPLOY_KC.md](docs/DEPLOY_KC.md) · [docs/TOOL_EXAMPLES.md](docs/TOOL_EXAMPLES.md)
 
 ---
 
-## 아키텍처
+## 바로 복사해서 써보기
 
 ```
-사용자 (KO / EN / ZH)
-    │
-    ├─ classify_emergency_intent ──► Tool + 장소 + 언어 힌트
-    │
-    └─ Tool / emergency_guide_tool
-            ├─ i18n_support · place_context
-            ├─ place_resolver (juso → Kakao → 랜드마크)
-            └─ NEMC · 행안부 · 경찰청 · 국토부 …
+명동성당쪽인데 급똥이야 화장실 알려줘
 ```
+
+```
+집에서 가스 냄새가 날 때 어떻게 해?
+```
+
+```
+강남역 근처 휠체어 화장실 어디있어?
+```
+
+```
+서울특별시 중구 세종대로 110 근처 화장실
+```
+
+더 많은 예시 → [카톡 스타일 테스트](docs/KAKAOTALK_TOOL_TESTS.md)
 
 ---
 
-## 데이터 출처
+## 누구를 위한 서비스인가요?
 
-국립중앙의료원 · 행정안전부 · 경찰청 · 국토교통부 · 국가보훈부 · 한국사회보장정보원 · Kakao Local · juso
-
----
-
-## PlayMCP · 카카오 가이드라인 준수
-
-- [x] Tool 15개 · Description 영·한 · WHEN TO USE
-- [x] 다국어 `user_request` · 포용 설계 (장애인·외국인·약자)
-- [x] `isError: true` · juso 1순위 · pytest + 글로벌 시나리오
+- 🧑‍🤝‍🧑 **일반 시민** — 길에서 화장실·약국·응급실이 급할 때  
+- 🌏 **외국인·관광객** — 한국어가 어려워도 영·중으로 질문  
+- ♿ **장애인·보호자** — 휠체어 화장실, 유아 수유·기저귀 공간  
+- 🌙 **사회적 약자** — 밤길 치안, 안전비상벨, 아동·청소년 쉼터  
+- 🎖️ **보훈 대상** — 위탁병원 안내  
 
 ---
 
-## 로컬 개발
+## 꼭 알아두세요
 
-```bash
-git clone https://github.com/dablro12/modu-emergencybell-mcp.git
-cd modu-emergencybell-mcp
-cp .env.example .env
-pip install -e .
-python scripts/process_restroom_data.py
-python modu_emergencybell.py
-```
-
-```bash
-pytest -q
-python scripts/kakaotalk_tool_tests.py
-python scripts/global_tool_tests.py
-```
-
-배포 → [docs/DEPLOY_KC.md](docs/DEPLOY_KC.md)
+- 생명이 위협되면 **즉시 119**에 전화하세요.
+- 야간·공휴일 병원·약국 정보는 **요일 기준**이며, 새벽 영업은 **전화 확인**이 필요할 수 있어요.
+- 안내는 참고용이며, **의료 진단·신고 대행**을 하지 않습니다.
 
 ---
 
-## Repository layout
-
-```
-modu-emergencybell-mcp/
-├── README.md              # 이 문서
-├── Dockerfile             # PlayMCP KC 이미지
-├── modu_emergencybell.py    # MCP 서버 진입점
-├── *.py                   # 도메인 모듈
-├── assets/                # 앱 아이콘
-├── data/
-│   ├── sources/           # 공중화장실 원본 CSV (1개)
-│   ├── toilet_data/       # 화장실 JSON 색인
-│   ├── emergencybell/     # 안전비상벨·치안 JSON
-│   ├── subway/            # 지하철·ATM JSON
-│   ├── hotlines/          # 핫라인 JSON
-│   └── phrases/           # 문장 카드 JSON
-├── docs/                  # 배포·테스트·제출 문서
-├── scripts/               # 데이터 가공 · 스모크 테스트
-├── server/requirements.txt
-└── tests/
-```
-
----
-
-## 문서
+## 더 보기
 
 | 문서 | 내용 |
 |------|------|
-| [docs/GLOBAL_KAKAOTALK.md](docs/GLOBAL_KAKAOTALK.md) | **글로벌** KO · EN · ZH 가이드 |
-| [docs/KAKAOTALK_TOOL_TESTS.md](docs/KAKAOTALK_TOOL_TESTS.md) | 카톡 스타일 한국어 테스트 |
-| [docs/TOOL_EXAMPLES.md](docs/TOOL_EXAMPLES.md) | JSON 호출 예제 |
-| [docs/submit_form/modu-emergencybell-submit.md](docs/submit_form/modu-emergencybell-submit.md) | AGENTIC PLAYER 10 제출 |
+| [English README](docs/README_Eng.md) | English user guide |
+| [中文 README](docs/README_Chi.md) | 中文用户指南 |
+| [GLOBAL_KAKAOTALK.md](docs/GLOBAL_KAKAOTALK.md) | 다국어 상세 · 테스트 |
+| [modu-emergencybell-submit.md](docs/submit_form/modu-emergencybell-submit.md) | AGENTIC PLAYER 10 제출 |
+
+---
 
 <div align="center">
 
 **카카오 2026 AGENTIC PLAYER 10 · 예선 제출**
 
-모두의비상벨 — **한국에 있는 모든 사람**을 위한 다음 행동 안내
+모두의비상벨 — 한국에 있는 **모든 사람**을 위한 다음 행동 안내
 
 </div>

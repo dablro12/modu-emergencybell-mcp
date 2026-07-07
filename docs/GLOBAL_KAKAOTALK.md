@@ -1,5 +1,7 @@
 # Global KakaoTalk Guide · 글로벌 카카오톡 가이드 · 全球 KakaoTalk 指南
 
+**사용자 가이드:** [README (한국어)](../README.md) · [English](README_Eng.md) · [中文](README_Chi.md)
+
 **modu-emergencybell(모두의비상벨)** — 한국에 있는 **모든 사람**을 위한 MCP  
 일반인 · 외국인 · 장애인 · 사회적 약자 · 관광객
 
