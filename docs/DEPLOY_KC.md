@@ -90,11 +90,15 @@ Repository → **Settings** → **Secrets and variables** → **Actions**
 | `KAKAO_REST_API_KEY` | Kakao Local 지오코딩 |
 | `SAFE182_AUTH_ID` / `SAFE182_AUTH_KEY` | 경찰청 안전Dream |
 | `KFTC_FINMAP_CLIENT_ID` / `KFTC_FINMAP_CLIENT_SECRET` | 금융맵 OAuth |
-| `KFTC_FINMAP_BASE_URL` | `https://finmapapi.kftc.or.kr` (운영, 실패 시 테스트 URL 자동 시도) |
-| `KFTC_FINMAP_PROD_URL` | `https://finmapapi.kftc.or.kr` |
+| `KFTC_FINMAP_BASE_URL` | `https://testfinmapapi.kftc.or.kr` (테스트베드 우선) |
+| `KFTC_FINMAP_PROD_URL` | `https://finmapapi.kftc.or.kr` (운영 — 이용계약·승인 후) |
 | `KFTC_FINMAP_TEST_URL` | `https://testfinmapapi.kftc.or.kr` |
 
-> 금융맵: KC에서 운영 URL 접근이 안 되면 `KFTC_FINMAP_BASE_URL`을 테스트베드로 설정하세요.
+> **금융맵 트러블슈팅**
+> - `rsp_code=163`: 인증 실패. Swagger **예시 키**(`88d4270a-...`)가 아닌 **마이페이지 API Key** 사용.
+> - `rsp_code=211`: 토큰 없이 API 호출. **Authorize → 토큰발급** 먼저.
+> - Callback URL: `client_credentials` 방식은 리다이렉트 불필요. 포털 등록 실패 시 `finmap@kftc.or.kr` 문의.
+> - 로컬 진단: `python scripts/test_finmap.py`
 
 ---
 

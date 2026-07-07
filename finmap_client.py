@@ -12,13 +12,43 @@ import httpx
 from helpers import haversine_m
 from kakao_local import geocode_place
 
-CLIENT_ID = os.getenv("KFTC_FINMAP_CLIENT_ID", "")
-CLIENT_SECRET = os.getenv("KFTC_FINMAP_CLIENT_SECRET", "")
+CLIENT_ID = os.getenv("KFTC_FINMAP_CLIENT_ID", "").strip()
+CLIENT_SECRET = os.getenv("KFTC_FINMAP_CLIENT_SECRET", "").strip()
 PROD_URL = os.getenv("KFTC_FINMAP_PROD_URL", "https://finmapapi.kftc.or.kr").rstrip("/")
 TEST_URL = os.getenv("KFTC_FINMAP_TEST_URL", "https://testfinmapapi.kftc.or.kr").rstrip("/")
-BASE_URL = os.getenv("KFTC_FINMAP_BASE_URL", PROD_URL).rstrip("/")
+BASE_URL = os.getenv("KFTC_FINMAP_BASE_URL", TEST_URL).rstrip("/")
+
+FINMAP_HEADERS = {
+    "Accept": "application/json",
+    "Content-Type": "application/json; charset=UTF-8",
+}
 
 _token_cache: dict[str, Any] = {"token": "", "expires_at": 0.0, "base": ""}
+
+
+def _parse_finmap_error(response: httpx.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text[:200] or f"HTTP {response.status_code}"
+    code = payload.get("rsp_code", "")
+    message = payload.get("rsp_message", "")
+    if code or message:
+        return f"rsp_code={code} {message}".strip()
+    return response.text[:200] or f"HTTP {response.status_code}"
+
+
+def _finmap_error_hint(rsp_code: str) -> str:
+    hints = {
+        "163": (
+            "인증 실패입니다. (1) Swagger 예시 키가 아닌 본인 API Key를 사용했는지, "
+            "(2) 금융 맵 서비스에 API Key 등록이 '완료'인지, "
+            "(3) 테스트베드는 testfinmapapi.kftc.or.kr / 운영은 별도 이용계약이 필요한지 확인하세요."
+        ),
+        "211": "Access Token이 없습니다. 먼저 /oauth/2.0/token 으로 토큰을 발급하세요.",
+        "212": "요청 헤더 형식이 잘못되었습니다. Content-Type을 확인하세요.",
+    }
+    return hints.get(rsp_code, "")
 
 
 def _require_credentials() -> tuple[str, str]:
@@ -28,11 +58,25 @@ def _require_credentials() -> tuple[str, str]:
 
 
 def _candidate_bases() -> list[str]:
+    """테스트베드 URL을 운영보다 먼저 시도합니다."""
     bases: list[str] = []
-    for url in (BASE_URL, PROD_URL, TEST_URL):
+    for url in (BASE_URL, TEST_URL, PROD_URL):
         if url and url not in bases:
             bases.append(url)
     return bases
+
+
+async def _request_token(client: httpx.AsyncClient, base: str, client_id: str, client_secret: str) -> httpx.Response:
+    return await client.post(
+        f"{base}/oauth/2.0/token",
+        headers={"Accept": "application/json"},
+        data={
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "scope": "finmap",
+            "grant_type": "client_credentials",
+        },
+    )
 
 
 async def _get_access_token() -> tuple[str, str]:
@@ -46,20 +90,20 @@ async def _get_access_token() -> tuple[str, str]:
     async with httpx.AsyncClient(timeout=20.0) as client:
         for base in _candidate_bases():
             try:
-                response = await client.post(
-                    f"{base}/oauth/2.0/token",
-                    data={
-                        "client_id": client_id,
-                        "client_secret": client_secret,
-                        "scope": "finmap",
-                        "grant_type": "client_credentials",
-                    },
-                )
+                response = await _request_token(client, base, client_id, client_secret)
             except httpx.HTTPError as exc:
                 last_error = f"{base} 연결 실패: {exc.__class__.__name__}"
                 continue
             if response.status_code >= 400:
-                last_error = f"{base} 토큰 오류 ({response.status_code})"
+                detail = _parse_finmap_error(response)
+                hint = ""
+                try:
+                    hint = _finmap_error_hint(str(response.json().get("rsp_code", "")))
+                except ValueError:
+                    pass
+                last_error = f"{base} 토큰 오류 ({response.status_code}): {detail}"
+                if hint:
+                    last_error += f" — {hint}"
                 continue
             payload = response.json()
             token = payload.get("access_token")
@@ -105,8 +149,10 @@ async def search_atms_near(
         return (
             f"금융맵 API에 연결하지 못했습니다.\n"
             f"- {exc}\n"
-            "- KC 네트워크에서 `finmapapi.kftc.or.kr` 접근이 가능한지 확인하세요.\n"
-            "- GitHub Secrets의 `KFTC_FINMAP_BASE_URL`을 운영/테스트 URL로 맞춰 주세요."
+            "- 개발자 포털 **도구 → 금융MAP → Authorize** 에서 본인 Client ID/Secret으로 토큰 발급을 먼저 확인하세요.\n"
+            "- Swagger 예시 키(`88d4270a-...`)가 아닌 **마이페이지 API Key** 를 사용해야 합니다.\n"
+            "- 테스트: `KFTC_FINMAP_BASE_URL=https://testfinmapapi.kftc.or.kr`\n"
+            "- Callback URL 등록이 실패하면 `finmap@kftc.or.kr` 로 client_credentials 전용 이용 문의하세요."
         )
 
     body = {
@@ -126,20 +172,25 @@ async def search_atms_near(
     async with httpx.AsyncClient(timeout=25.0) as client:
         response = await client.post(
             f"{base}/v1.0/inquiry/atm_lists",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={**FINMAP_HEADERS, "Authorization": f"Bearer {token}"},
             json=body,
         )
 
     if response.status_code >= 400:
+        detail = _parse_finmap_error(response)
         return (
             f"금융맵 ATM 조회 오류 ({response.status_code}).\n"
             f"- 사용 URL: {base}\n"
-            "- 인증정보·테스트베드 승인 상태를 확인하세요."
+            f"- {detail}"
         )
 
     payload = response.json()
     if payload.get("rsp_code") != "000":
-        return f"금융맵 조회 실패: {payload.get('rsp_message', 'unknown error')}"
+        code = str(payload.get("rsp_code", ""))
+        hint = _finmap_error_hint(code)
+        message = payload.get("rsp_message", "unknown error")
+        extra = f"\n- {hint}" if hint else ""
+        return f"금융맵 조회 실패: {message} (rsp_code={code}){extra}"
 
     atms = payload.get("atm_list") or []
     for atm in atms:
