@@ -3,6 +3,12 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
+
+_APP_DIR = Path(__file__).resolve().parent / "source" / "app"
+if str(_APP_DIR) not in sys.path:
+    sys.path.insert(0, str(_APP_DIR))
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP

@@ -22,10 +22,10 @@ jobs:
           pip install pytest pytest-asyncio
 
       - name: Build restroom index
-        run: python scripts/process_restroom_data.py
+        run: python source/scripts/process_restroom_data.py
 
       - name: Run tests
         env:
           DATA_GO_KR_SERVICE_KEY: ""
           DATA_GO_KR_SERVICE_KEY_ENCODED: ""
-        run: pytest tests/ -q --ignore=tests/test_juso_client.py -m "not live"
+        run: pytest source/tests/ -q --ignore=source/tests/test_juso_client.py -m "not live"
