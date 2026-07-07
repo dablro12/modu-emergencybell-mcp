@@ -39,6 +39,12 @@ def test_find_subway_gangnam():
     assert "물품보관함" in text
 
 
+def test_find_subway_seoul_station_not_garak():
+    text = find_subway_facility("서울역")
+    assert "가락시장" not in text
+    assert "서울" in text
+
+
 def test_find_subway_busan():
     text = find_subway_facility("서면")
     assert "물품보관함" in text or "등록된" in text

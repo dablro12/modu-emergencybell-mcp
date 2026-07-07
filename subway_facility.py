@@ -27,16 +27,30 @@ def load_index() -> dict[str, Any]:
 
 def _match_station(query: str) -> dict[str, Any] | None:
     key = normalize_station(query)
+    if not key:
+        return None
     stations = load_index().get("stations") or []
+
     for station in stations:
         if station.get("id") == key:
-            return station
-        if key and key in station.get("search_text", ""):
             return station
         for name in station.get("names", []):
             if normalize_station(name) == key:
                 return station
-    return None
+
+    best: dict[str, Any] | None = None
+    best_len = 0
+    for station in stations:
+        candidates = [station.get("id", "")] + (station.get("names") or [])
+        for cand in candidates:
+            norm = normalize_station(cand)
+            if not norm:
+                continue
+            if key in norm or norm in key:
+                if len(norm) > best_len:
+                    best = station
+                    best_len = len(norm)
+    return best
 
 
 def find_subway_facility(
