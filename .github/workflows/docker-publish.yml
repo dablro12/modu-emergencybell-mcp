@@ -12,6 +12,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || 'https://modu-emergencybell-mcp.playmcp-endpoint.kakaocloud.io' }}
 
 jobs:
   build-and-push:
@@ -50,3 +51,4 @@ jobs:
             JUSO_ENG_CONFM_KEY=${{ secrets.JUSO_ENG_CONFM_KEY }}
             SAFE182_AUTH_ID=${{ secrets.SAFE182_AUTH_ID }}
             SAFE182_AUTH_KEY=${{ secrets.SAFE182_AUTH_KEY }}
+            PUBLIC_BASE_URL=${{ env.PUBLIC_BASE_URL }}
