@@ -13,6 +13,7 @@ import httpx
 
 from kakao_local import coord_to_region
 from helpers import haversine_m
+from map_preview import append_overview_map, enrich_result_lines
 from region_parse import parse_place_query
 
 SERVICE_KEY = os.getenv("DATA_GO_KR_SERVICE_KEY", "")
@@ -329,6 +330,15 @@ def _format_er_beds(hvec: str) -> str:
         return hvec
 
 
+def _coord_item(row: dict[str, str]) -> dict[str, float]:
+    try:
+        lat = float(row.get("wgs84Lat", "") or row.get("latitude", ""))
+        lng = float(row.get("wgs84Lon", "") or row.get("longitude", ""))
+        return {"latitude": lat, "longitude": lng}
+    except (TypeError, ValueError):
+        return {}
+
+
 def format_clinic_list(
     clinics: list[dict[str, str]],
     *,
@@ -352,6 +362,8 @@ def format_clinic_list(
     if coords_hint:
         lines.append(f"- 기준: {coords_hint}")
     lines.append("")
+    clinic_points = [_coord_item(c) for c in clinics]
+    append_overview_map(lines, clinic_points, title=f"{region_label} 병·의원")
 
     for idx, c in enumerate(clinics, start=1):
         name = c.get("dutyName", "이름 없음")
@@ -369,6 +381,7 @@ def format_clinic_list(
             lines.append(f"- **전화**: {tel}")
         if etc:
             lines.append(f"- **비고**: {etc[:120]}")
+        enrich_result_lines(lines, name=name, item=_coord_item(c), rank=idx)
         lines.append("")
 
     lines.append(MEDICAL_DISCLAIMER)
@@ -392,6 +405,8 @@ def format_er_list(
     if coords_hint:
         lines.append(f"- 기준: {coords_hint}")
     lines.append("")
+    room_points = [_coord_item(r) for r in rooms]
+    append_overview_map(lines, room_points, title=f"{region_label} 응급실")
 
     for idx, r in enumerate(rooms, start=1):
         name = r.get("dutyName", "이름 없음")
@@ -404,6 +419,7 @@ def format_er_list(
         lines.append(f"- **병상**: {beds}")
         if updated:
             lines.append(f"- **갱신**: {updated}")
+        enrich_result_lines(lines, name=name, item=_coord_item(r), rank=idx)
         lines.append("")
 
     lines.append(MEDICAL_DISCLAIMER)
@@ -520,6 +536,8 @@ def format_pharmacy_list(
     if time_note:
         lines.append(f"- ⏰ {time_note}")
     lines.append("")
+    pharmacy_points = [_coord_item(p) for p in pharmacies]
+    append_overview_map(lines, pharmacy_points, title=f"{region_label} 약국")
 
     for idx, p in enumerate(pharmacies, start=1):
         name = p.get("dutyName", "이름 없음")
@@ -532,6 +550,7 @@ def format_pharmacy_list(
             lines.append(f"- **주소**: {addr}")
         if tel:
             lines.append(f"- **전화**: {tel}")
+        enrich_result_lines(lines, name=name, item=_coord_item(p), rank=idx)
         lines.append("")
 
     lines.append(PHARMACY_DISCLAIMER)
