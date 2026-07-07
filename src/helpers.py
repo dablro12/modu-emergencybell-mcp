@@ -10,7 +10,7 @@ from typing import Any
 
 from runtime_paths import data_path
 from kakao_local import coord_to_region
-from landmarks import lookup_landmark_coords, lookup_landmark_region, strip_poi_noise
+from landmarks import lookup_landmark_coords, lookup_landmark_region
 from region_parse import normalize_place_query, parse_place_query, region_full_prefix, regions_match
 from map_preview import append_overview_map, enrich_result_lines
 from restroom_parser import is_open_now
@@ -234,19 +234,43 @@ async def fetch_restrooms(
         except (ValueError, OSError):
             pass
 
-    results = search_records(
+    base_kwargs = dict(
         latitude=latitude,
         longitude=longitude,
-        query_tokens=query_tokens,
         region_prefix=region_prefix,
         radius_m=radius,
         user_type=user_type,
         open_now=open_now,
         limit=limit,
+    )
+
+    # 좌표 반경 검색은 토큰 필터 없이 (POI명이 화장실 데이터에 없어도 근처 결과 반환)
+    results = search_records(
+        **base_kwargs,
+        query_tokens=None,
         strict_region=bool(region_prefix),
     )
     if results and any(r.get("distance_m") is not None for r in results):
         return results
+
+    results = search_records(
+        **base_kwargs,
+        query_tokens=None,
+        strict_region=False,
+    )
+    if results and any(r.get("distance_m") is not None for r in results):
+        return results
+
+    if query_tokens:
+        soft_tokens = [t for t in query_tokens if t and len(t) <= 12]
+        if soft_tokens:
+            results = search_records(
+                **base_kwargs,
+                query_tokens=soft_tokens[:1],
+                strict_region=False,
+            )
+            if results:
+                return results
 
     if allow_region_fallback and region_prefix:
         region_only = search_records(
@@ -283,9 +307,6 @@ async def search_restrooms_by_query(
     poi_tokens: list[str] = []
     if ctx.poi_name:
         poi_tokens.append(ctx.poi_name)
-    stripped_poi = strip_poi_noise(query)
-    if stripped_poi and stripped_poi not in poi_tokens:
-        poi_tokens.append(stripped_poi)
     has_confident_coords = bool(coords) and ctx.source in {
         "kakao_poi",
         "kakao_keyword",
@@ -299,25 +320,21 @@ async def search_restrooms_by_query(
 
     if coords:
         lat, lng = coords
-        for step in radius_steps:
-            results = await fetch_restrooms(
-                lat,
-                lng,
-                step,
-                user_type=user_type,
-                open_now=open_now,
-                limit=limit,
-                region_prefix=region_prefix,
-                allow_region_fallback=False,
-                query_tokens=poi_tokens or None,
-            )
-            if results:
-                return results, f"{lat:.6f},{lng:.6f}"
-        if has_confident_coords:
-            return [], f"{lat:.6f},{lng:.6f}"
-
-    if has_confident_coords:
-        return [], f"{coords[0]:.6f},{coords[1]:.6f}" if coords else None
+        for allow_fallback in (False, True):
+            for step in radius_steps:
+                results = await fetch_restrooms(
+                    lat,
+                    lng,
+                    step,
+                    user_type=user_type,
+                    open_now=open_now,
+                    limit=limit,
+                    region_prefix=region_prefix,
+                    allow_region_fallback=allow_fallback,
+                    query_tokens=poi_tokens or None,
+                )
+                if results:
+                    return results, f"{lat:.6f},{lng:.6f}"
 
     results = _search_by_region_and_tokens(
         normalized,

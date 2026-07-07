@@ -111,6 +111,64 @@ def test_strip_poi_noise():
 
     assert strip_poi_noise("명동성당쪽") == "명동성당"
     assert strip_poi_noise("홍대 근처") == "홍대"
+    assert strip_poi_noise("혜화골목길인데 화장실도 급하고") == "혜화골목길"
+    assert strip_poi_noise("경복궁 근처 화장실이랑 비상벨") == "경복궁"
+
+
+def test_extract_place_golmokgil() -> None:
+    from place_context import extract_place_from_text
+
+    assert extract_place_from_text("혜화골목길인데 화장실도 급하고") == "혜화골목길"
+    assert extract_place_from_text("경복궁 근처 화장실이랑 비상벨") == "경복궁"
+
+
+def test_resolve_search_place_composite() -> None:
+    from place_context import resolve_search_place
+
+    place = resolve_search_place(
+        "경복궁 근처 화장실이랑 비상벨 어디있어",
+        fallback="서울",
+    )
+    assert place == "경복궁"
+
+
+@pytest.mark.asyncio
+async def test_search_restroom_gangnam_station():
+    results, coords = await search_restrooms_by_query(
+        "강남역 화장실 어디야",
+        limit=3,
+    )
+    assert len(results) >= 1
+    assert coords is not None
+
+
+@pytest.mark.asyncio
+async def test_search_restroom_gyeongbokgung(monkeypatch: pytest.MonkeyPatch):
+    async def fake_poi(query: str):
+        from poi_resolver import DynamicPoi
+
+        return DynamicPoi(
+            query="경복궁",
+            place_name="경복궁",
+            latitude=37.579617,
+            longitude=126.977041,
+            sido="서울특별시",
+            sigungu="종로구",
+        )
+
+    async def fake_juso(*args, **kwargs):
+        return None
+
+    async def fake_kakao(*args, **kwargs):
+        return None, None, ""
+
+    monkeypatch.setattr("poi_resolver.resolve_dynamic_poi", fake_poi)
+    monkeypatch.setattr("place_resolver.resolve_administrative", fake_juso)
+    monkeypatch.setattr("place_resolver.geocode_via_kakao_candidates", fake_kakao)
+
+    results, coords = await search_restrooms_by_query("경복궁 근처 화장실 급해", limit=3)
+    assert len(results) >= 1
+    assert coords is not None
 
 
 @pytest.mark.asyncio

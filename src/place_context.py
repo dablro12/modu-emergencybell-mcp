@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from landmarks import resolve_landmark_poi, strip_poi_noise
+from landmarks import ROAD_GIL_PATTERN, resolve_landmark_poi, strip_poi_noise
 from i18n_support import (
     EN_PLACE_NOISE,
     ZH_PLACE_NOISE,
@@ -251,6 +251,11 @@ def extract_place_from_text(text: str) -> str:
 
     cleaned = strip_poi_noise(stripped)
 
+    for match in ROAD_GIL_PATTERN.findall(cleaned):
+        name = match.strip()
+        if len(name) >= 3:
+            return name
+
     station = resolve_foreign_station(cleaned) or resolve_foreign_station(stripped)
     if station:
         return station
@@ -287,11 +292,52 @@ def extract_place_from_text(text: str) -> str:
         if station.replace("역", "") in cleaned and "역" in cleaned:
             return station
 
+    if cleaned and cleaned not in PLACE_NOISE_TOKENS:
+        compact = cleaned.strip()
+        if compact and len(compact) <= 24 and not any(ch.isdigit() for ch in compact):
+            if compact.endswith(("역", "동", "구", "군", "길", "로", "골목길", "공원", "궁")):
+                return compact
+            if len(compact.split()) <= 2 and resolve_landmark_poi(compact):
+                return resolve_landmark_poi(compact)[2]
+            if len(compact.split()) == 1 and len(compact) >= 2:
+                return compact
+
     return ""
 
 
 def _is_generic_region_token(name: str) -> bool:
     return name in REGION_FALLBACK_TOKENS or name in SIDO_ALIASES or name in SIDO_ALIASES.values()
+
+
+def resolve_search_place(
+    user_request: str,
+    *,
+    place_query: str | None = None,
+    poi_name: str = "",
+    expanded_query: str = "",
+    fallback: str = "",
+) -> str:
+    """검색·체인용 장소 문자열 — 원문에서 POI를 우선 추출."""
+    for candidate in (
+        extract_place_from_text(user_request),
+        extract_place_from_text(place_query or ""),
+        poi_name.strip(),
+        strip_poi_noise(place_query or ""),
+        strip_poi_noise(user_request),
+        expanded_query.strip(),
+        fallback.strip(),
+    ):
+        normalized = (candidate or "").strip()
+        if not normalized or normalized in PLACE_NOISE_TOKENS or len(normalized) < 2:
+            continue
+        if "어디" in normalized or "이랑" in normalized:
+            normalized = strip_poi_noise(normalized)
+        if normalized and normalized not in PLACE_NOISE_TOKENS:
+            poi = resolve_landmark_poi(normalized)
+            if poi:
+                return poi[2]
+            return normalized
+    return fallback
 
 
 def merge_place_inputs(place_query: str | None, user_request: str | None) -> str:
@@ -328,8 +374,13 @@ def merge_place_inputs(place_query: str | None, user_request: str | None) -> str
         return from_poi[2] if from_poi else from_text
 
     if ur:
+        if from_text:
+            return from_poi[2] if from_poi else from_text
         cleaned = strip_poi_noise(ur)
         if cleaned and cleaned not in PLACE_NOISE_TOKENS:
+            poi = resolve_landmark_poi(cleaned)
+            if poi:
+                return poi[2]
             return cleaned
 
     return ""

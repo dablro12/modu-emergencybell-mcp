@@ -27,10 +27,28 @@ POI_SUFFIXES = (
     "一带",
 )
 POI_CHAT_NOISE = re.compile(
-    r"(급똥|화장실|똥|급히|지금\s?여기|알려\s?줘|찾아\s?줘|제발|도와\s?줘|"
-    r"restroom|toilet|bathroom|urgent(?:ly)?|please|help\s*me|where\s+is|"
-    r"厕所|洗手间|卫生间|在哪|哪里|急|帮帮我)",
+    r"(급똥|똥|급히|지금\s?여기|알려\s?줘|찾아\s?줘|제발|도와\s?줘|"
+    r"어디(?:있어|있냐|야|임)?|"
+    r"urgent(?:ly)?|please|help\s*me|where\s+is|"
+    r"在哪|哪里|帮帮我)",
     re.IGNORECASE,
+)
+# 의도·시설 키워드 + 붙는 조사/연결어 (화장실도, 화장실이랑 등 통째 제거)
+INTENT_PHRASE_NOISE = re.compile(
+    r"(?:"
+    r"화장실|비상벨|편의점|약국|응급실|응급|병원|의원|캐리어|와이파이|wifi|"
+    r"restroom|toilet|bathroom|safety\s*bell|emergency\s*bell|pharmacy|hospital|"
+    r"厕所|洗手间|卫生间|비상"
+    r")(?:이랑|랑|하고|과|와|도|은|는|을|를)?(?:\s*(?:급하고|급해|급함|없어|없냐|없을까))?",
+    re.IGNORECASE,
+)
+ORPHAN_CONNECTOR_NOISE = re.compile(r"\s*(?:이랑|랑|하고|과|와)\s+")
+TRAILING_CHAT_NOISE = re.compile(
+    r"(?:인데|는데|데|야|요|임|음|ㅋ+|ㅎ+)(?:\s*도\s*)?"
+    r"(?:급하고|급해|급함|없어|없냐|없을까|어디|어디있|어디있어|어디야)?\s*$"
+)
+ROAD_GIL_PATTERN = re.compile(
+    r"([\uac00-\ud7a3]+(?:골목길|골목|대로|로|길)(?:\d+가|-?\d+)?)"
 )
 LANDMARK_COORDS: dict[str, tuple[float, float]] = {
     "명동": (37.5636, 126.9834),
@@ -170,8 +188,19 @@ def strip_poi_noise(query: str) -> str:
     stripped = (query or "").strip()
     if not stripped:
         return stripped
-    cleaned = POI_CHAT_NOISE.sub("", stripped).strip(" ,.!?，。！？")
+
+    cleaned = INTENT_PHRASE_NOISE.sub(" ", stripped)
+    cleaned = POI_CHAT_NOISE.sub(" ", cleaned)
     cleaned = strip_multilingual_noise(cleaned)
+    cleaned = ORPHAN_CONNECTOR_NOISE.sub(" ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,.!?，。！？")
+
+    while cleaned:
+        next_cleaned = TRAILING_CHAT_NOISE.sub("", cleaned).strip(" ,.!?")
+        if next_cleaned == cleaned:
+            break
+        cleaned = next_cleaned
+
     for suffix in POI_SUFFIXES:
         if cleaned.endswith(suffix):
             cleaned = cleaned[: -len(suffix)].strip()

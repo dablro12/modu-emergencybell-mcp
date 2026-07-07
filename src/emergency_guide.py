@@ -22,6 +22,7 @@ from place_context import (
     infer_specialty,
     infer_user_type_from_text,
     normalize_situation_tag,
+    resolve_search_place,
 )
 from intent_routing import resolve_effective_place
 from phrases import format_phrase_card
@@ -55,7 +56,14 @@ async def emergency_guide(
 ) -> str:
     """자연어 요청을 해석해 적절한 비상·생활 안내를 한 번에 반환."""
     place_ctx = await _resolve_place(user_request, place_query)
-    place = place_ctx.expanded_query or place_ctx.query
+    search_place = resolve_search_place(
+        user_request,
+        place_query=place_query,
+        poi_name=place_ctx.poi_name,
+        expanded_query=place_ctx.expanded_query or place_ctx.query,
+        fallback=place_ctx.expanded_query or place_ctx.query or "서울",
+    )
+    place = search_place
     intents = classify_intents(user_request)
     sections: list[str] = [GUIDE_HEADER, f"**질문**: {user_request.strip()}", f"**기준 지역**: {place}", ""]
     if place_ctx.warning:
