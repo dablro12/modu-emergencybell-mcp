@@ -69,10 +69,11 @@ async def emergency_guide_tool(
     place_query: str | None = None,
     language: str = "ko",
 ) -> str:
-    f"""**Recommended first tool** for natural-language help via {SERVICE_DISPLAY}.
+    f"""Primary orchestration tool for multi-intent requests in {SERVICE_DISPLAY}.
 
-    Parses Korean/English and chains hotlines, restrooms, clinics, pharmacies, ER beds,
-    safety bells, health triage, subway, accessible facilities, Safe182, phrase cards.
+    USE FIRST when one message includes 2+ needs (e.g. symptom+hospital+pharmacy,
+    restroom+safety, missing child+hotline, pet emergency+nearest vet).
+    It automatically classifies intent and chains the right tools.
 
     Examples: `명동성당 급똥+밤에 안전`, `새벽 아이 39도`, `레고 삼켰어`, `신설동역 축구 후 두통`.
     """
@@ -94,6 +95,7 @@ async def health_triage_tool(
 
     USE for: child swallowed LEGO/glue, wrong medication, which department/hospital,
     headache+sore throat after exercise, what medicine (public info only — not prescription).
+    If users also ask for nearby facilities/hotlines together, prefer `emergency_guide_tool`.
     """
     base = tool_description(
         f"Health triage for {SERVICE_DISPLAY}. Returns urgency, hotlines, recommended department, "
@@ -115,7 +117,10 @@ async def get_emergency_hotlines(
     situation: str | None = None,
     language: str = "ko",
 ) -> str:
-    f"""Emergency numbers (119/112/1339) for the user's situation via {SERVICE_DISPLAY}."""
+    f"""Emergency numbers (119/112/1339) for one clear situation via {SERVICE_DISPLAY}.
+
+    For mixed intents with location/facility lookup, prefer `emergency_guide_tool`.
+    """
     _ = tool_description("Hotline guidance only — does not dial.", "get_emergency_hotlines")
     return format_emergency_hotlines(
         situation_description,
@@ -140,7 +145,11 @@ async def find_nearest_restroom(
     open_now: bool = False,
     limit: int = 5,
 ) -> str:
-    f"""Public restrooms via {SERVICE_DISPLAY}. Replaces deprecated search_restroom."""
+    f"""Public restroom lookup via {SERVICE_DISPLAY}. Replaces deprecated search_restroom.
+
+    Single-intent tool. If the request also includes safety/medical/hotline needs,
+    use `emergency_guide_tool` for composite tool chaining.
+    """
     _ = tool_description("Single-intent restroom search.", "find_nearest_restroom")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
@@ -210,8 +219,9 @@ async def find_medical_care(
 ) -> str:
     f"""Clinics, pharmacies, or ER beds near a region via {SERVICE_DISPLAY} (NEMC).
 
-    Merges find_open_clinic + find_open_pharmacy + find_emergency_room.
+    Merges find_open_clinic + find_open_pharmacy + find_emergency_room in one call.
     care_type: all | clinic | pharmacy | emergency_room.
+    For complex natural-language requests, prefer `emergency_guide_tool`.
     """
     _ = tool_description("People medical facilities only.", "find_medical_care")
     effective_place, _ = await resolve_effective_place(
@@ -244,7 +254,11 @@ async def find_veteran_hospital(
     hospital_type: str | None = None,
     limit: int = 5,
 ) -> str:
-    f"""국가보훈부 위탁병원 near a region via {SERVICE_DISPLAY}."""
+    f"""국가보훈부 위탁병원 near a region via {SERVICE_DISPLAY}.
+
+    NEVER use for pet care. Pet/vet requests should call `find_outdoor_service_tool`
+    with `service=vet_hospital` (or use `emergency_guide_tool`).
+    """
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
@@ -291,7 +305,10 @@ async def find_safety_bell(
     place_type: str | None = None,
     limit: int = 5,
 ) -> str:
-    f"""Crime-prevention outdoor safety bells via {SERVICE_DISPLAY}."""
+    f"""Crime-prevention outdoor safety bells via {SERVICE_DISPLAY}.
+
+    This is for street/public safety bells, not restroom wall emergency buttons.
+    """
     _ = tool_description("Street safety bells — not restroom wall buttons.", "find_safety_bell")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
@@ -334,7 +351,10 @@ async def find_subway_facility_tool(
     facility_type: str = "all",
     limit: int = 5,
 ) -> str:
-    f"""Subway lockers and accessibility (elevator, wheelchair lift) via {SERVICE_DISPLAY}."""
+    f"""Subway lockers and accessibility (elevator, wheelchair lift) via {SERVICE_DISPLAY}.
+
+    For broader multi-intent travel/emergency requests, prefer `emergency_guide_tool`.
+    """
     from place_context import extract_place_from_text
 
     station = station_query
@@ -385,7 +405,11 @@ async def find_accessible_facility_tool(
     include_subway: bool = True,
     limit: int = 5,
 ) -> str:
-    f"""Wheelchair restrooms and disabled-access facilities via {SERVICE_DISPLAY}."""
+    f"""Wheelchair restrooms and disabled-access facilities via {SERVICE_DISPLAY}.
+
+    Single-intent accessibility tool. For mixed requests with medical/safety intents,
+    use `emergency_guide_tool`.
+    """
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
@@ -413,7 +437,11 @@ async def find_outdoor_service_tool(
     wheelchair_accessible: bool = False,
     limit: int = 5,
 ) -> str:
-    f"""ATM, WiFi, vet hospitals, animal pharmacies, bus stops via {SERVICE_DISPLAY}."""
+    f"""ATM, WiFi, vet hospitals, animal pharmacies, bus stops via {SERVICE_DISPLAY}.
+
+    Use `service=vet_hospital` for animal emergency. For mixed intents, use
+    `emergency_guide_tool` to orchestrate multiple tools.
+    """
     _ = tool_description("Outdoor services including pets.", "find_outdoor_service_tool")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
