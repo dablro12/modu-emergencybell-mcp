@@ -28,6 +28,7 @@ from emergency_guide import emergency_guide
 from veteran_hospital import find_veteran_hospitals_near
 from intent_routing import classify_and_route, resolve_effective_place
 from mcp_prompts import register_prompts
+from mcp_tool_result import install_tool_error_wrapping
 from place_resolver import resolve_place_context
 from place_context import (
     infer_user_type_from_text,
@@ -579,6 +580,9 @@ async def find_outdoor_service_tool(
         wheelchair_accessible=wheelchair_accessible,
         limit=limit,
     )
+
+
+install_tool_error_wrapping(mcp)
 
 
 def main() -> None:

@@ -82,6 +82,49 @@ def _prefer_juso(query: str) -> bool:
     return query.endswith(("동", "구", "군")) or " " in query.strip()
 
 
+def looks_like_address(query: str) -> bool:
+    """도로명·지번·번지 포함 주소형 입력."""
+    import re
+
+    stripped = (query or "").strip()
+    if not stripped:
+        return False
+    if re.search(r"\d+\s*번지", stripped):
+        return True
+    if re.search(r"\d+-\d+", stripped) and any(ch in stripped for ch in ("길", "로", "동", "구")):
+        return True
+    if re.search(r"[가-힣]+(로|길)\s*\d+", stripped):
+        return True
+    if re.search(r"\d+", stripped) and any(
+        token in stripped for token in ("로", "길", "번지", "아파트", "동 ")
+    ):
+        return True
+    lowered = stripped.lower()
+    if re.search(r"\d+", stripped) and any(
+        word in lowered for word in ("street", "road", "avenue", "building", "apt")
+    ):
+        return True
+    return False
+
+
+def should_juso_first(query: str) -> bool:
+    """주소·행정구역형은 juso 우선, 랜드마크·역은 Kakao/landmark 우선."""
+    stripped = (query or "").strip()
+    if not stripped:
+        return False
+    if resolve_landmark_poi(stripped):
+        return False
+    if looks_like_address(stripped):
+        return True
+    if _prefer_keyword(stripped) and not stripped.endswith(("동", "구", "군")):
+        return False
+    if stripped.endswith(("동", "구", "군")):
+        return True
+    if " " in stripped and len(stripped) >= 4:
+        return True
+    return _prefer_juso(stripped)
+
+
 def _is_latin_query(query: str) -> bool:
     from juso_client import is_latin_address_query
 
@@ -180,8 +223,32 @@ def _apply_landmark_poi_override(ctx: PlaceContext, query: str) -> None:
             ctx.expanded_query = f"{lm_region} {keyword}".strip()
 
 
+async def _resolve_juso_first(
+    ctx: PlaceContext,
+    *,
+    stripped: str,
+    expanded: str,
+    sido_hint: str,
+) -> bool:
+    """juso 1순위 해석. 성공 시 True."""
+    from juso_client import is_latin_address_query
+
+    prefer_en = is_latin_address_query(stripped) or is_latin_address_query(expanded)
+    for keyword in (stripped, expanded):
+        if not keyword:
+            continue
+        juso = await resolve_administrative(keyword, prefer_english=prefer_en)
+        if juso:
+            _apply_juso(ctx, juso)
+            addr = juso.get("road_addr") or juso.get("jibun_addr") or ""
+            if addr and not ctx.coords:
+                await _geocode_juso_address(ctx, addr, sido_hint=sido_hint)
+            return True
+    return False
+
+
 async def resolve_place_context(query: str) -> PlaceContext:
-    """자연어 장소 → 좌표·행정구역 (Kakao 1순위 POI, juso 2순위 주소)."""
+    """자연어 장소 → 좌표·행정구역 (주소형 juso 1순위, POI Kakao, 랜드마크 보정)."""
     raw = (query or "").strip()
     stripped = strip_poi_noise(raw) or raw
     ctx = PlaceContext(query=raw)
@@ -195,26 +262,36 @@ async def resolve_place_context(query: str) -> PlaceContext:
     anchor = _geocode_anchor(ctx.expanded_query, sido_hint)
 
     prefer_keyword = _prefer_keyword(stripped) or _prefer_keyword(ctx.expanded_query)
+    juso_first = should_juso_first(stripped) or should_juso_first(normalized)
 
-    coords, doc, source = await geocode_via_kakao_candidates(
-        ctx.expanded_query,
-        sido_hint=sido_hint,
-        prefer_keyword=prefer_keyword,
-        anchor=anchor,
-    )
-    if doc:
-        _apply_kakao_doc(ctx, doc, source)
-    elif coords:
-        ctx.apply_coords(coords[0], coords[1])
-        ctx.source = source or "kakao"
-        _set_confidence(ctx, "medium")
+    if juso_first:
+        await _resolve_juso_first(
+            ctx,
+            stripped=stripped,
+            expanded=ctx.expanded_query,
+            sido_hint=sido_hint,
+        )
+
+    if not juso_first or not ctx.coords:
+        coords, doc, source = await geocode_via_kakao_candidates(
+            ctx.expanded_query,
+            sido_hint=sido_hint,
+            prefer_keyword=prefer_keyword and not juso_first,
+            anchor=anchor,
+        )
+        if doc:
+            _apply_kakao_doc(ctx, doc, source)
+        elif coords:
+            ctx.apply_coords(coords[0], coords[1])
+            ctx.source = source or "kakao"
+            _set_confidence(ctx, "medium")
 
     need_juso = (
         (not ctx.sigungu or _prefer_juso(stripped))
         and _prefer_juso(ctx.expanded_query)
     ) or (not ctx.sigungu and stripped.endswith("동"))
     latin_query = _is_latin_query(stripped) or _is_latin_query(ctx.expanded_query)
-    if need_juso or (not ctx.sigungu and not prefer_keyword) or latin_query:
+    if (need_juso or (not ctx.sigungu and not prefer_keyword) or latin_query) and not juso_first:
         from juso_client import is_latin_address_query
 
         prefer_en = is_latin_address_query(stripped) or is_latin_address_query(ctx.expanded_query)
