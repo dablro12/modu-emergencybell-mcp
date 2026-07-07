@@ -65,7 +65,19 @@ SPECIALTY_ALIASES: dict[str, str] = {
     "veterinary": "vet",
     "동물병원": "vet",
     "vet": "vet",
+    "veteran": "veteran",
+    "보훈": "veteran",
 }
+
+VETERAN_KEYWORDS = (
+    "보훈",
+    "국가유공자",
+    "유공자",
+    "위탁병원",
+    "보훈병원",
+    "보훈의료",
+    "veteran",
+)
 
 SERVICE_ALIASES_EXTRA: dict[str, str] = {
     "locker": "subway_locker",
@@ -198,11 +210,33 @@ def classify_intents(text: str) -> list[str]:
         add("restroom")
     if any(k in text for k in ("안전비상벨", "범죄예방", "safety bell")) and "화장실" not in text:
         add("safety_bell")
+    if any(
+        k in text
+        for k in (
+            "범죄",
+            "치안",
+            "취약",
+            "위험한",
+            "crime",
+            "안전할까",
+            "안전한가",
+            "밤에 걸",
+            "야간",
+            "강도",
+            "절도",
+            "성범죄",
+            "추행",
+        )
+    ):
+        add("crime_stats")
     if any(k in text for k in ("약국", "pharmacy")):
         add("pharmacy")
     if any(k in text for k in ("응급실", "병상", "emergency room")):
         add("emergency_room")
-    if any(k in text for k in ("소아과", "병원", "의원", "진료", "clinic", "내과", "39도", "열")):
+    if any(
+        k in text
+        for k in ("소아과", "병원", "의원", "진료", "clinic", "내과", "39도", "열")
+    ) and not any(k in text for k in VETERAN_KEYWORDS):
         add("clinic")
     if any(k in text for k in ("물품보관함", "짐 맡", "locker", "luggage")):
         add("subway_locker")
@@ -212,6 +246,10 @@ def classify_intents(text: str) -> list[str]:
         add("atm")
     if any(k in text for k in ("와이파이", "wifi", "wi-fi")):
         add("wifi")
+    if any(k in text for k in ("버스정류장", "버스 정류장", "정류장", "정류소", "bus stop")):
+        add("bus_stop")
+    if any(k in text for k in VETERAN_KEYWORDS):
+        add("veteran_hospital")
     if any(k in text for k in ("동물병원", "vet", "veterinary")):
         add("vet")
     if any(k in text for k in ("안전지킴이", "쉼터", "safe182", "아동안전")):
@@ -225,6 +263,8 @@ def classify_intents(text: str) -> list[str]:
 
 
 def infer_specialty(text: str) -> str:
+    if any(k in text for k in VETERAN_KEYWORDS):
+        return "veteran"
     if any(k in text for k in ("소아", "아이", "pediatric")):
         return "pediatric"
     if "내과" in text or "internal" in text.lower():

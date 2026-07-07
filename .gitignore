@@ -7,3 +7,5 @@ dist/
 build/
 .pytest_cache/
 data/toilet_data/공중화장실_01_전체레코드.json
+data/bus/bus_stop_index.json
+data/medical/veteran_hospital_index.json

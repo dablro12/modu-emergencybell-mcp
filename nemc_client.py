@@ -422,6 +422,10 @@ async def find_open_clinics_near(
     from place_context import normalize_specialty
 
     specialty = normalize_specialty(specialty)
+    if specialty == "veteran":
+        from veteran_hospital import find_veteran_hospitals_near
+
+        return await find_veteran_hospitals_near(place_query=place_query, limit=limit)
     if specialty == "vet":
         return (
             "동물병원은 `find_outdoor_service_tool`(service=`vet_hospital`) 또는 "

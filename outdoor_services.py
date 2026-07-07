@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from bus_stop import find_bus_stops_near
 from datago_json_client import (
     format_vet_list,
     format_wifi_list,
@@ -22,6 +23,12 @@ SERVICE_ALIASES = {
     "animal": "vet_hospital",
     "동물병원": "vet_hospital",
     "와이파이": "wifi",
+    "bus_stop": "bus_stop",
+    "bus": "bus_stop",
+    "버스": "bus_stop",
+    "버스정류장": "bus_stop",
+    "정류장": "bus_stop",
+    "정류소": "bus_stop",
 }
 
 
@@ -62,10 +69,18 @@ async def find_outdoor_service(
     if kind == "vet_hospital":
         rows = await search_vet_hospitals(place_query=place_query, limit=limit)
         return format_vet_list(rows, query=place_query)
+    if kind == "bus_stop":
+        return await find_bus_stops_near(
+            place_query=place_query,
+            stop_name=station_query,
+            radius_m=800,
+            limit=limit,
+        )
 
     return (
         f"지원하지 않는 service 값: `{service}`\n"
         "- `atm`: ATM/현금인출\n"
         "- `wifi`: 무료 와이파이\n"
-        "- `vet_hospital`: 동물병원"
+        "- `vet_hospital`: 동물병원\n"
+        "- `bus_stop`: 버스정류장"
     )

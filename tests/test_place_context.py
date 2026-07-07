@@ -68,6 +68,16 @@ def test_classify_intents_fever_child() -> None:
     assert "hotlines" in intents or "pharmacy" in intents or "clinic" in intents
 
 
+def test_classify_intents_crime_stats() -> None:
+    intents = classify_intents("강남구 밤에 걸어도 안전할까")
+    assert "crime_stats" in intents
+
+
+def test_classify_intents_bus_stop() -> None:
+    intents = classify_intents("강남역 버스정류장 어디야")
+    assert "bus_stop" in intents
+
+
 @pytest.mark.asyncio
 async def test_emergency_guide_offline_hotlines(monkeypatch: pytest.MonkeyPatch) -> None:
     from emergency_guide import emergency_guide

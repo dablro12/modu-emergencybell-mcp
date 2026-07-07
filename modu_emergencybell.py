@@ -25,6 +25,7 @@ from safe182_client import search_safe_places
 from safety_bell import find_safety_bells_near
 from subway_facility import find_subway_facility
 from emergency_guide import emergency_guide
+from veteran_hospital import find_veteran_hospitals_near
 from place_resolver import resolve_place_context
 from place_context import (
     infer_user_type_from_text,
@@ -71,7 +72,7 @@ async def emergency_guide_tool(
     accessible facilities, Safe182 places, phrase cards.
 
     Examples: `집에서 가스 냄새`, `종로구 창신동 약국`, `연산9동 내과`, `강남역 물품보관함`,
-    `명동 휠체어 화장실`, `새벽 아이 39도`, `아이 실종 신고`.
+    `명동 휠체어 화장실`, `새벽 아이 39도`, `아이 실종 신고`, `강남구 밤에 안전할까`, `강남역 버스정류장`.
 
     place_query: optional region hint when not in user_request (동·역·구 이름 OK).
     Dong-only names like 창신동, 연산9동 are expanded to 시·구 automatically.
@@ -212,14 +213,42 @@ async def find_open_clinic(
 
     Natural-language place_query (동·역·구 OK — e.g. 창신동, 연산9동, 서울 마포구).
     treatment_day: 월요일~일요일, sunday/tuesday, 공휴일, 2026-05-05, or omit for today.
-    specialty: pediatric, internal, general (aliases: internal_medicine, 내과).
+    specialty: pediatric, internal, general, veteran (보훈·국가유공자 위탁병원).
+    For veteran hospitals use specialty=veteran or find_veteran_hospital.
     For veterinary use find_outdoor_service_tool(service=vet_hospital).
     """
     specialty = normalize_specialty(specialty)
+    if specialty == "veteran":
+        return await find_veteran_hospitals_near(place_query=place_query, limit=limit)
     return await find_open_clinics_near(
         place_query=place_query,
         specialty=specialty,
         treatment_day=treatment_day,
+        limit=limit,
+    )
+
+
+@mcp.tool(
+    annotations={
+        **TOOL_ANNOTATIONS,
+        "title": "Find Veteran Entrusted Hospital",
+    }
+)
+async def find_veteran_hospital(
+    place_query: str,
+    hospital_type: str | None = None,
+    limit: int = 5,
+) -> str:
+    f"""Finds **보훈의료 위탁병원** (국가보훈부) near a region via {SERVICE_DISPLAY}.
+
+    For **국가유공자·보훈대상자** medical facilities. Natural-language place_query
+    (동·역·구 OK — e.g. 강남구, 창신동, 부산 해운대구).
+    hospital_type optional filter: 종합병원, 요양병원, 의원.
+    General night/holiday clinics: use `find_open_clinic`. Eligibility: verify with hospital/보훈.
+    """
+    return await find_veteran_hospitals_near(
+        place_query=place_query,
+        hospital_type=hospital_type,
         limit=limit,
     )
 
@@ -289,6 +318,7 @@ async def find_safety_bell(
     Use **place_query in natural language only** (e.g. 서울 이태원, 부산 광안리, 한강공원 여의도).
     Do NOT ask the user for coordinates — geocoding is internal.
     NOT restroom wall buttons (use search_restroom user_type=elderly_safety).
+    Includes **regional crime statistics** (경찰청 2024) when the district is resolved.
     place_type optional filter: 골목길, 공원, etc.
     """
     return await find_safety_bells_near(
@@ -404,11 +434,12 @@ async def find_outdoor_service_tool(
     wheelchair_accessible: bool = False,
     limit: int = 5,
 ) -> str:
-    f"""Finds subway-station ATM info, free public WiFi, or veterinary hospitals via {SERVICE_DISPLAY}.
+    f"""Finds subway-station ATM info, free public WiFi, veterinary hospitals, or bus stops via {SERVICE_DISPLAY}.
 
     For ATM: set `station_query` to the station name when possible (e.g. 강남역, 서울역).
     `place_query` is a location hint used when the station name is unclear.
-    service: atm | wifi | vet_hospital | locker (물품보관함 — subway only).
+    service: atm | wifi | vet_hospital | locker (물품보관함 — subway only) | bus_stop (버스정류장).
+    For bus_stop, optional `station_query` can carry a stop name hint (e.g. 강남역.GC).
     For lockers prefer find_subway_facility_tool. For vet use vet_hospital not find_open_clinic.
     """
     return await find_outdoor_service(

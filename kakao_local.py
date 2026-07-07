@@ -210,19 +210,14 @@ async def geocode_via_kakao_candidates(
     search_order = ("keyword", "address") if prefer_keyword else ("address", "keyword")
 
     for candidate in candidates:
-        kwargs: dict[str, Any] = {"size": 5}
-        if anchor:
-            kwargs["x"] = anchor[1]
-            kwargs["y"] = anchor[0]
-            kwargs["radius"] = 30_000
-
         for mode in search_order:
             try:
                 if mode == "keyword":
-                    documents = await search_keyword(candidate, **kwargs)
+                    # radius bias breaks keyword search (returns empty for 역·POI)
+                    documents = await search_keyword(candidate, size=5)
                     source = "kakao_keyword"
                 else:
-                    documents = await search_address(candidate, size=kwargs.get("size", 5))
+                    documents = await search_address(candidate, size=5)
                     source = "kakao_address"
             except (ValueError, OSError):
                 continue

@@ -27,7 +27,7 @@ def test_extract_admin_from_kakao_keyword_doc() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_uses_juso_for_dong(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_juso(keyword: str):
+    async def fake_juso(keyword: str, **kwargs):
         if "창신동" in keyword:
             return {
                 "sido": "서울특별시",
@@ -68,7 +68,7 @@ async def test_resolve_kakao_keyword_for_station(monkeypatch: pytest.MonkeyPatch
     async def fake_kakao(query, **kwargs):
         return (37.497942, 127.027621), doc, "kakao_keyword"
 
-    async def fake_juso(keyword: str):
+    async def fake_juso(keyword: str, **kwargs):
         return None
 
     monkeypatch.setattr("place_resolver.geocode_via_kakao_candidates", fake_kakao)
@@ -85,7 +85,7 @@ async def test_resolve_warns_on_centroid_fallback(monkeypatch: pytest.MonkeyPatc
     async def fake_kakao(*args, **kwargs):
         return None, None, ""
 
-    async def fake_juso(keyword: str):
+    async def fake_juso(keyword: str, **kwargs):
         return None
 
     monkeypatch.setattr("place_resolver.geocode_via_kakao_candidates", fake_kakao)

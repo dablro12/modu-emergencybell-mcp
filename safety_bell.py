@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from crime_stats import format_crime_stats_brief, lookup_from_place
 from helpers import haversine_m
 from kakao_local import coord_to_region, geocode_place, resolve_place
 from landmarks import lookup_landmark_coords, lookup_landmark_region
@@ -143,6 +144,14 @@ def format_safety_bell_list(
     return "\n".join(lines)
 
 
+def _append_crime_context(lines: list[str], *, sido: str, sigungu: str, query: str | None) -> None:
+    region = lookup_from_place(sido=sido, sigungu=sigungu, query=query or "")
+    if not region:
+        return
+    lines.append("")
+    lines.append(format_crime_stats_brief(region))
+
+
 def _region_centroid(region_prefix: str) -> tuple[float, float] | None:
     matches = [r for r in load_records() if regions_match(r["region"]["full_prefix"], region_prefix)]
     if not matches:
@@ -167,6 +176,7 @@ async def find_safety_bells_near(
     radius_m: int = 500,
     place_type: str | None = None,
     limit: int = 5,
+    include_crime_stats: bool = True,
 ) -> str:
     lat, lng = latitude, longitude
     region_prefix = ""
@@ -233,10 +243,18 @@ async def find_safety_bells_near(
             bells = strict[:limit]
 
     coords_hint = _coords_hint(lat, lng, region_prefix=region_prefix, fallback=region_fallback)
-    return format_safety_bell_list(
+    text = format_safety_bell_list(
         bells,
         query=normalized_query or place_query,
         coords_hint=coords_hint,
         radius_used=radius_used if bells else None,
         region_mismatch=region_mismatch,
     )
+    if include_crime_stats:
+        sido, sigungu = parse_place_query(region_prefix or place_query or "")
+        if not sigungu and region_prefix:
+            sido, sigungu = parse_place_query(region_prefix)
+        lines = text.splitlines()
+        _append_crime_context(lines, sido=sido, sigungu=sigungu, query=normalized_query or place_query)
+        text = "\n".join(lines)
+    return text

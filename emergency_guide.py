@@ -14,6 +14,8 @@ from nemc_client import (
     find_open_pharmacies_near,
     parse_treatment_day,
 )
+from crime_stats import crime_stats_for_place
+from veteran_hospital import find_veteran_hospitals_near
 from outdoor_services import find_outdoor_service
 from place_context import (
     classify_intents,
@@ -90,6 +92,23 @@ async def emergency_guide(
         )
         sections.append(format_restroom_list(rows, query=place, coords_hint=coords))
 
+    if "crime_stats" in intents:
+        crime_text = await crime_stats_for_place(
+            place_query=place,
+            sido=place_ctx.sido,
+            sigungu=place_ctx.sigungu,
+        )
+        if crime_text:
+            sections.append(crime_text)
+        else:
+            sections.append(
+                f"**{place}** 지역의 범죄 통계를 찾지 못했습니다.\n"
+                "- **시·군·구** 단위로 다시 말씀해 주세요 (예: `서울 강남구`, `부산 해운대구`)."
+            )
+
+    if "veteran_hospital" in intents:
+        sections.append(await find_veteran_hospitals_near(place_query=place, limit=5))
+
     if "safety_bell" in intents:
         sections.append(await find_safety_bells_near(place_query=place, radius_m=500, limit=5))
 
@@ -99,6 +118,8 @@ async def emergency_guide(
             sections.append(
                 await find_outdoor_service(place_query=place, service="vet_hospital", limit=5)
             )
+        elif specialty == "veteran":
+            sections.append(await find_veteran_hospitals_near(place_query=place, limit=5))
         else:
             clinic_text = await find_open_clinics_near(
                 place_query=place,
@@ -153,6 +174,21 @@ async def emergency_guide(
 
     if "wifi" in intents:
         sections.append(await find_outdoor_service(place_query=place, service="wifi", limit=5))
+
+    if "bus_stop" in intents:
+        stop_hint = None
+        for token in ("정류장", "정류소"):
+            if token in user_request:
+                stop_hint = user_request
+                break
+        sections.append(
+            await find_outdoor_service(
+                place_query=place,
+                service="bus_stop",
+                station_query=stop_hint,
+                limit=5,
+            )
+        )
 
     if "vet" in intents and "clinic" not in intents:
         sections.append(

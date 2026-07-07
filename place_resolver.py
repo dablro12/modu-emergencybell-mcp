@@ -76,6 +76,12 @@ def _prefer_juso(query: str) -> bool:
     return query.endswith(("동", "구", "군")) or " " in query.strip()
 
 
+def _is_latin_query(query: str) -> bool:
+    from juso_client import is_latin_address_query
+
+    return is_latin_address_query(query)
+
+
 def _confidence_rank(value: str) -> int:
     return {"high": 3, "medium": 2, "low": 1}.get(value, 0)
 
@@ -103,7 +109,12 @@ def _apply_kakao_doc(ctx: PlaceContext, doc: dict[str, Any], source: str) -> Non
 def _apply_juso(ctx: PlaceContext, row: dict[str, str]) -> None:
     ctx.apply_admin(sido=row["sido"], sigungu=row["sigungu"], dong=row.get("dong", ""))
     ctx.expanded_query = row.get("expanded_query") or ctx.expanded_query
-    ctx.source = "juso"
+    ctx.source = "juso_eng" if row.get("lang") == "en" else "juso"
+    if row.get("lang") == "en" and row.get("display_addr_en"):
+        ctx.warning = (
+            f"영문 주소 `{row['display_addr_en']}` → "
+            f"한글 `{row.get('road_addr') or ctx.expanded_query}` 로 해석했습니다."
+        )
     _set_confidence(ctx, "high")
 
 
@@ -156,10 +167,14 @@ async def resolve_place_context(query: str) -> PlaceContext:
         (not ctx.sigungu or _prefer_juso(stripped))
         and _prefer_juso(ctx.expanded_query)
     ) or (not ctx.sigungu and stripped.endswith("동"))
-    if need_juso or (not ctx.sigungu and not prefer_keyword):
-        juso = await resolve_administrative(ctx.expanded_query)
+    latin_query = _is_latin_query(stripped) or _is_latin_query(ctx.expanded_query)
+    if need_juso or (not ctx.sigungu and not prefer_keyword) or latin_query:
+        from juso_client import is_latin_address_query
+
+        prefer_en = is_latin_address_query(stripped) or is_latin_address_query(ctx.expanded_query)
+        juso = await resolve_administrative(ctx.expanded_query, prefer_english=prefer_en)
         if not juso and expanded != stripped:
-            juso = await resolve_administrative(stripped)
+            juso = await resolve_administrative(stripped, prefer_english=prefer_en)
         if juso:
             _apply_juso(ctx, juso)
             if not ctx.coords:
