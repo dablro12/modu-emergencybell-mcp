@@ -235,17 +235,57 @@ async def test_search_restroom_myeongdong_cathedral():
 
 @pytest.mark.asyncio
 async def test_search_restroom_changsin_vs_myeongdong_differ(monkeypatch: pytest.MonkeyPatch) -> None:
-    from restroom_nearby import search_restrooms_nearby
+    from place_resolver import PlaceContext
 
-    async def fake_nearby(latitude, longitude, **kwargs):
+    async def fake_resolve(query: str) -> PlaceContext:
+        if "창신" in query:
+            return PlaceContext(
+                query=query,
+                expanded_query="창신5라길",
+                latitude=37.574,
+                longitude=127.012,
+                sido="서울특별시",
+                sigungu="종로구",
+                poi_name="창신5라길",
+                confidence="high",
+                source="kakao_poi",
+            )
+        return PlaceContext(
+            query=query,
+            expanded_query="명동성당",
+            latitude=37.564,
+            longitude=126.987,
+            sido="서울특별시",
+            sigungu="중구",
+            poi_name="명동성당",
+            confidence="high",
+            source="kakao_poi",
+        )
+
+    async def fake_nearby(latitude: float, longitude: float, **kwargs):
         if latitude > 37.57:
             return [
-                {"id": "a", "name": "종로구민회관", "region": {"full_prefix": "서울특별시 종로구"}, "distance_m": 100, "opening": {"is_always_open": False, "is_closed_type": False}, "user_types": {"tags": ["general"]}},
+                {
+                    "id": "a",
+                    "name": "종로구민회관",
+                    "region": {"full_prefix": "서울특별시 종로구"},
+                    "distance_m": 100,
+                    "opening": {"is_always_open": False, "is_closed_type": False},
+                    "user_types": {"tags": ["general"]},
+                },
             ]
         return [
-            {"id": "b", "name": "명동역(4)", "region": {"full_prefix": "서울특별시 중구"}, "distance_m": 90, "opening": {"is_always_open": False, "is_closed_type": False}, "user_types": {"tags": ["general"]}},
+            {
+                "id": "b",
+                "name": "명동역(4)",
+                "region": {"full_prefix": "서울특별시 중구"},
+                "distance_m": 90,
+                "opening": {"is_always_open": False, "is_closed_type": False},
+                "user_types": {"tags": ["general"]},
+            },
         ]
 
+    monkeypatch.setattr("place_resolver.resolve_place_context", fake_resolve)
     monkeypatch.setattr("restroom_nearby.search_restrooms_nearby", fake_nearby)
 
     changsin, _ = await search_restrooms_by_query("창신5라길", limit=3)
