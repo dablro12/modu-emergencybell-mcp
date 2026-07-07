@@ -418,8 +418,8 @@ def classify_intents(text: str) -> list[str]:
         add("restroom")
     if any(
         k in text or k in lowered
-        for k in ("안전비상벨", "범죄예방", "safety bell")
-    ) and not any(k in text for k in ("화장실", "restroom", "toilet", "厕所")):
+        for k in ("안전비상벨", "비상벨", "범죄예방", "safety bell")
+    ):
         add("safety_bell")
     if any(
         k in text or k in lowered
@@ -485,11 +485,11 @@ def classify_intents(text: str) -> list[str]:
     if any(
         k in text or k in lowered
         for k in ("소아과", "병원", "의원", "진료", "clinic", "내과", "39度", "39도", "열", "fever", *fk["clinic_en"], *fk["clinic_zh"])
-    ) and not any(k in text for k in VETERAN_KEYWORDS) and not pet_query:
+    ) and (not any(k in text for k in VETERAN_KEYWORDS) or any(k in text for k in ("일반", "내과", "clinic", "general"))) and not pet_query:
         add("clinic")
     if any(
         k in text or k in lowered
-        for k in ("물품보관함", "짐 맡", "locker", "luggage", *fk["locker_en"], *fk["locker_zh"])
+        for k in ("물품보관함", "짐 맡", "캐리어", "보관함", "locker", "luggage", *fk["locker_en"], *fk["locker_zh"])
     ):
         add("subway_locker")
     if any(
@@ -511,6 +511,8 @@ def classify_intents(text: str) -> list[str]:
     if any(k in text or k in lowered for k in ("동물병원", "vet", "veterinary", *fk["vet_en"], *fk["vet_zh"])):
         add("vet")
     if any(k in text or k in lowered for k in ("안전지킴이", "쉼터", "safe182", "아동안전")):
+        add("safe_place")
+    if any(k in text or k in lowered for k in ("대피", "피신", "evacuate", "shelter")):
         add("safe_place")
     if any(
         k in text or k in lowered

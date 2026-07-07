@@ -124,12 +124,15 @@ async def emergency_guide(
         elif specialty == "veteran":
             sections.append(await find_veteran_hospitals_near(place_query=place, limit=5))
         else:
-            clinic_text = await find_open_clinics_near(
-                place_query=place,
-                specialty=specialty,
-                treatment_day=qt,
-                limit=5,
-            )
+            try:
+                clinic_text = await find_open_clinics_near(
+                    place_query=place,
+                    specialty=specialty,
+                    treatment_day=qt,
+                    limit=5,
+                )
+            except Exception as exc:  # noqa: BLE001
+                clinic_text = f"병·의원 조회 중 오류: {exc}"
             sections.append(clinic_text)
             if time_note:
                 sections.append(f"_{time_note}_")
@@ -137,18 +140,24 @@ async def emergency_guide(
     if ("pharmacy" in intents or (
         "clinic" in intents and any(k in user_request for k in ("39도", "열", "fever"))
     )) and "health_triage" not in intents:
-        sections.append(
-            await find_open_pharmacies_near(
-                place_query=place,
-                treatment_day=qt,
-                limit=5,
+        try:
+            sections.append(
+                await find_open_pharmacies_near(
+                    place_query=place,
+                    treatment_day=qt,
+                    limit=5,
+                )
             )
-        )
+        except Exception as exc:  # noqa: BLE001
+            sections.append(f"약국 조회 중 오류: {exc}")
 
     if ("emergency_room" in intents or (
         "clinic" in intents and any(k in user_request for k in ("39도", "응급", "emergency"))
     )) and "health_triage" not in intents:
-        sections.append(await find_emergency_rooms_near(place_query=place, limit=5))
+        try:
+            sections.append(await find_emergency_rooms_near(place_query=place, limit=5))
+        except Exception as exc:  # noqa: BLE001
+            sections.append(f"응급실 조회 중 오류: {exc}")
 
     if "subway_locker" in intents:
         station = place if "역" in place else f"{place.split()[-1]}역" if place else place
