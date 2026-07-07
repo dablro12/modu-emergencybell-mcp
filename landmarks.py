@@ -2,10 +2,31 @@
 
 from __future__ import annotations
 
+import re
+
 from region_parse import normalize_place_query
 
+POI_NOISE = re.compile(r"^\d+$|^\(.+\)$")
+POI_SUFFIXES = (
+    " 근처",
+    " 부근",
+    " 일대",
+    " 인근",
+    " 앞",
+    " 뒤",
+    " 옆",
+    " 근방",
+    " 주변",
+    "쪽",
+)
+POI_CHAT_NOISE = re.compile(
+    r"(급똥|화장실|똥|급히|지금\s?여기|알려\s?줘|찾아\s?줘|제발|도와\s?줘)",
+    re.IGNORECASE,
+)
 LANDMARK_COORDS: dict[str, tuple[float, float]] = {
     "명동": (37.5636, 126.9834),
+    "명동성당": (37.5633, 126.9870),
+    "myeongdong cathedral": (37.5633, 126.9870),
     "명동역": (37.560993, 126.986502),
     "myeongdong station": (37.560993, 126.986502),
     "myeongdong": (37.5636, 126.9834),
@@ -41,6 +62,7 @@ LANDMARK_COORDS: dict[str, tuple[float, float]] = {
 
 LANDMARK_REGION: dict[str, str] = {
     "명동": "서울특별시 중구",
+    "명동성당": "서울특별시 중구",
     "명동역": "서울특별시 중구",
     "강남역": "서울특별시 강남구",
     "코엑스": "서울특별시 강남구",
@@ -58,11 +80,15 @@ LANDMARK_REGION: dict[str, str] = {
 
 # 쿼리 문자열에 포함되면 매칭 (긴 키워드 우선)
 PARTIAL_LANDMARKS: tuple[tuple[str, tuple[float, float], str], ...] = (
+    ("명동성당", (37.5633, 126.9870), "서울특별시 중구"),
+    ("myeongdong cathedral", (37.5633, 126.9870), "서울특별시 중구"),
     ("한강공원 여의도", (37.528423, 126.932901), "서울특별시 영등포구"),
     ("이태원 해밀턴", (37.5345, 126.9946), "서울특별시 용산구"),
     ("해밀턴호텔", (37.5345, 126.9946), "서울특별시 용산구"),
     ("광안리 해수욕장", (35.1532, 129.1186), "부산광역시 수영구"),
     ("광안리", (35.1532, 129.1186), "부산광역시 수영구"),
+    ("명동", (37.5636, 126.9834), "서울특별시 중구"),
+    ("홍대", (37.557192, 126.925381), "서울특별시 마포구"),
     ("한강공원", (37.528423, 126.932901), "서울특별시 영등포구"),
     ("여의도", (37.5219, 126.9245), "서울특별시 영등포구"),
     ("이태원", (37.5345, 126.9946), "서울특별시 용산구"),
@@ -91,25 +117,49 @@ SIDO_CENTROIDS: dict[str, tuple[float, float]] = {
 }
 
 
-def lookup_landmark_coords(query: str) -> tuple[float, float] | None:
-    stripped = query.strip()
+def strip_poi_noise(query: str) -> str:
+    """자연어 잡음(쪽·근처·급똥 등) 제거 후 POI 키워드만 남김."""
+    stripped = (query or "").strip()
     if not stripped:
-        return None
-    normalized = normalize_place_query(stripped)
-    for candidate in (normalized, stripped):
-        key = candidate.lower()
-        if key in LANDMARK_COORDS:
-            return LANDMARK_COORDS[key]
-        if candidate in LANDMARK_COORDS:
-            return LANDMARK_COORDS[candidate]
-    lowered = stripped.lower()
-    for keyword, coords, _region in sorted(PARTIAL_LANDMARKS, key=lambda x: -len(x[0])):
-        if keyword in stripped or keyword.lower() in lowered:
-            return coords
+        return stripped
+    cleaned = POI_CHAT_NOISE.sub("", stripped).strip(" ,.!?")
+    for suffix in POI_SUFFIXES:
+        if cleaned.endswith(suffix):
+            cleaned = cleaned[: -len(suffix)].strip()
+    return cleaned or stripped
+
+
+def resolve_landmark_poi(query: str) -> tuple[tuple[float, float], str, str] | None:
+    """부분 랜드마크 매칭 — (좌표, 행정구역, 키워드)."""
+    for candidate in (
+        strip_poi_noise(query),
+        (query or "").strip(),
+        normalize_place_query(strip_poi_noise(query)),
+    ):
+        if not candidate:
+            continue
+        lowered = candidate.lower()
+        for keyword, coords, region in sorted(PARTIAL_LANDMARKS, key=lambda x: -len(x[0])):
+            if keyword in candidate or keyword.lower() in lowered:
+                return coords, region, keyword
+        for key in (candidate, lowered):
+            if key in LANDMARK_COORDS:
+                region = LANDMARK_REGION.get(key) or LANDMARK_REGION.get(candidate, "")
+                return LANDMARK_COORDS[key], region, candidate
+    return None
+
+
+def lookup_landmark_coords(query: str) -> tuple[float, float] | None:
+    poi = resolve_landmark_poi(query)
+    if poi:
+        return poi[0]
     return None
 
 
 def lookup_landmark_region(query: str) -> str:
+    poi = resolve_landmark_poi(query)
+    if poi:
+        return poi[1]
     stripped = query.strip()
     if not stripped:
         return ""
@@ -120,10 +170,6 @@ def lookup_landmark_region(query: str) -> str:
         key = candidate.lower()
         if key in LANDMARK_REGION:
             return LANDMARK_REGION[key]
-    lowered = stripped.lower()
-    for keyword, _coords, region in sorted(PARTIAL_LANDMARKS, key=lambda x: -len(x[0])):
-        if keyword in stripped or keyword.lower() in lowered:
-            return region
     return ""
 
 
@@ -136,3 +182,35 @@ def lookup_sido_centroid(sido: str) -> tuple[float, float] | None:
         if sido in key or key.startswith(sido[:2]):
             return coords
     return None
+
+
+def extract_landmark_search_term(query: str) -> str:
+    """API·토큰 검색용 랜드마크명 — 주소 번지·괄호 동명은 제외."""
+    stripped = strip_poi_noise(query)
+    if not stripped:
+        return ""
+    poi = resolve_landmark_poi(stripped)
+    if poi:
+        return poi[2]
+    lowered = stripped.lower()
+    for keyword, _coords, _region in sorted(PARTIAL_LANDMARKS, key=lambda x: -len(x[0])):
+        if keyword in stripped or keyword.lower() in lowered:
+            return keyword
+    for candidate in (stripped, normalize_place_query(stripped)):
+        if candidate in LANDMARK_COORDS:
+            return candidate
+        key = candidate.lower()
+        if key in LANDMARK_COORDS:
+            return key
+    tokens: list[str] = []
+    for tok in stripped.replace(",", " ").split():
+        tok = tok.strip()
+        if len(tok) < 2 or tok.isdigit() or POI_NOISE.match(tok):
+            continue
+        if tok.startswith("(") and tok.endswith(")"):
+            continue
+        tokens.append(tok)
+    for tok in tokens:
+        if not any(ch.isdigit() for ch in tok):
+            return tok
+    return tokens[0] if tokens else stripped

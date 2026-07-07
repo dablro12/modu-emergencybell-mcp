@@ -12,7 +12,13 @@ from kakao_local import (
     geocode_via_kakao_candidates,
     search_address,
 )
-from landmarks import lookup_landmark_coords, lookup_landmark_region, lookup_sido_centroid
+from landmarks import (
+    lookup_landmark_coords,
+    lookup_landmark_region,
+    lookup_sido_centroid,
+    resolve_landmark_poi,
+    strip_poi_noise,
+)
 from place_context import expand_place_query
 from region_parse import (
     extract_sido_hint,
@@ -21,7 +27,7 @@ from region_parse import (
     region_full_prefix,
 )
 
-POI_HINTS = ("역", "coex", "코엑스", "공원", "해변", "시장", "몰", "백화점", "터미널", "공항")
+POI_HINTS = ("역", "coex", "코엑스", "공원", "해변", "시장", "몰", "백화점", "터미널", "공항", "성당")
 
 
 @dataclass
@@ -135,10 +141,50 @@ async def _geocode_juso_address(ctx: PlaceContext, address: str, *, sido_hint: s
         _apply_kakao_doc(ctx, doc, "kakao_address")
 
 
+def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    import math
+
+    radius = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlambda / 2) ** 2
+    return 2 * radius * math.asin(math.sqrt(a))
+
+
+def _apply_landmark_poi_override(ctx: PlaceContext, query: str) -> None:
+    poi = resolve_landmark_poi(query)
+    if not poi:
+        return
+    lm_coords, lm_region, keyword = poi
+    if lm_region and not ctx.sigungu:
+        sido, sigungu = parse_place_query(lm_region)
+        ctx.apply_admin(sido=sido, sigungu=sigungu)
+        if ctx.source == "unknown":
+            ctx.source = "landmark_region"
+
+    label = f"{ctx.expanded_query or ''} {ctx.query or ''}"
+    keyword_in_label = keyword in label or keyword.lower() in label.lower()
+    should_override = False
+    if ctx.coords:
+        dist = _haversine_m(ctx.coords[0], ctx.coords[1], lm_coords[0], lm_coords[1])
+        should_override = dist > 120 or (not keyword_in_label and len(keyword) >= 4)
+    else:
+        should_override = True
+
+    if should_override:
+        ctx.apply_coords(lm_coords[0], lm_coords[1])
+        ctx.source = "landmark_poi" if ctx.source == "unknown" else f"landmark_poi+{ctx.source}"
+        _set_confidence(ctx, "medium")
+        if keyword not in (ctx.expanded_query or ""):
+            ctx.expanded_query = f"{lm_region} {keyword}".strip()
+
+
 async def resolve_place_context(query: str) -> PlaceContext:
     """자연어 장소 → 좌표·행정구역 (Kakao 1순위 POI, juso 2순위 주소)."""
-    stripped = (query or "").strip()
-    ctx = PlaceContext(query=stripped)
+    raw = (query or "").strip()
+    stripped = strip_poi_noise(raw) or raw
+    ctx = PlaceContext(query=raw)
     if not stripped:
         return ctx
 
@@ -236,5 +282,9 @@ async def resolve_place_context(query: str) -> PlaceContext:
         ctx.expanded_query = region_full_prefix(ctx.sido, ctx.sigungu)
         if ctx.dong and ctx.dong not in ctx.expanded_query:
             ctx.expanded_query = f"{ctx.expanded_query} {ctx.dong}".strip()
+
+    _apply_landmark_poi_override(ctx, stripped)
+    if raw != stripped:
+        _apply_landmark_poi_override(ctx, raw)
 
     return ctx

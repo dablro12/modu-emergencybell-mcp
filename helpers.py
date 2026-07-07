@@ -13,6 +13,7 @@ from landmarks import lookup_landmark_coords, lookup_landmark_region
 from region_parse import normalize_place_query, parse_place_query, region_full_prefix, regions_match
 from restroom_parser import is_open_now
 
+RESTROOM_RADIUS_STEPS = (500, 1000, 2000, 3000)
 DATA_DIR = Path(__file__).resolve().parent / "data" / "toilet_data"
 RECORDS_FILE = DATA_DIR / "공중화장실_01_전체레코드.json"
 META_FILE = DATA_DIR / "공중화장실_02_메타정보.json"
@@ -99,8 +100,13 @@ def _matches_open_now(record: dict[str, Any], open_now: bool) -> bool:
 
 
 def _query_tokens(query: str) -> list[str]:
+    from landmarks import extract_landmark_search_term
+
     normalized = normalize_place_query(query)
-    tokens = []
+    tokens: list[str] = []
+    landmark_term = extract_landmark_search_term(query)
+    if landmark_term:
+        tokens.append(landmark_term.lower())
     for raw in (normalized, query):
         for tok in raw.replace(",", " ").split():
             tok = tok.strip().lower()
@@ -265,25 +271,29 @@ async def search_restrooms_by_query(
     from place_resolver import resolve_place_context
 
     ctx = await resolve_place_context(query)
-    coords = ctx.coords
+    coords = ctx.coords or lookup_landmark_coords(query) or lookup_landmark_coords(normalized)
     region_prefix = ctx.region_prefix or lookup_landmark_region(query) or lookup_landmark_region(
         normalized
     )
 
+    radius_steps = [r for r in RESTROOM_RADIUS_STEPS if r >= radius]
+    if not radius_steps:
+        radius_steps = [radius]
+
     if coords:
         lat, lng = coords
-        results = await fetch_restrooms(
-            lat,
-            lng,
-            radius,
-            user_type=user_type,
-            open_now=open_now,
-            limit=limit,
-            region_prefix=region_prefix,
-        )
-        has_distance = any(r.get("distance_m") is not None for r in results)
-        if results and has_distance:
-            return results, f"{lat:.6f},{lng:.6f}"
+        for step in radius_steps:
+            results = await fetch_restrooms(
+                lat,
+                lng,
+                step,
+                user_type=user_type,
+                open_now=open_now,
+                limit=limit,
+                region_prefix=region_prefix,
+            )
+            if results:
+                return results, f"{lat:.6f},{lng:.6f}"
 
     results = _search_by_region_and_tokens(
         normalized,
@@ -326,7 +336,7 @@ def format_restroom_list(
         hint = f"'{query}'" if query else "해당 조건"
         return (
             f"{hint}에 맞는 공중화장실을 찾지 못했습니다.\n"
-            "- 다른 키워드(역 이름, 구 이름)로 다시 시도해 보세요.\n"
+            "- 랜드마크·역 이름으로 다시 시도해 보세요 (예: 명동성당, 강남역, 홍대).\n"
             "- `user_type`: wheelchair, infant_care, elderly_safety, child, general"
         )
 

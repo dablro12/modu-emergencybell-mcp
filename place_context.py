@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from landmarks import resolve_landmark_poi, strip_poi_noise
 from region_parse import SIDO_ALIASES, parse_place_query, region_full_prefix
 
 DONG_EXACT: dict[str, str] = {
@@ -153,9 +154,14 @@ def extract_place_hint(text: str) -> str:
 
 
 def expand_place_query(query: str) -> str:
-    stripped = (query or "").strip()
+    stripped = strip_poi_noise((query or "").strip())
     if not stripped:
         return stripped
+
+    poi = resolve_landmark_poi(stripped)
+    if poi:
+        _coords, region, keyword = poi
+        return f"{region} {keyword}".strip()
 
     sido, sigungu = parse_place_query(stripped)
     if sido and sigungu:
@@ -166,8 +172,9 @@ def expand_place_query(query: str) -> str:
     if stripped in DONG_EXACT:
         return DONG_EXACT[stripped]
 
-    for dong, full in DONG_EXACT.items():
-        if dong in stripped:
+    tokens = stripped.replace(",", " ").split()
+    for dong, full in sorted(DONG_EXACT.items(), key=lambda x: -len(x[0])):
+        if dong in tokens or stripped == dong:
             return full
 
     for station, region in STATION_REGION.items():
@@ -206,7 +213,7 @@ def classify_intents(text: str) -> list[str]:
 
     if any(k in text for k in ("119", "112", "1339", "182", "전화", "신고", "실종", "가스", "누출", "독극물")):
         add("hotlines")
-    if "화장실" in text or "restroom" in lowered or "toilet" in lowered:
+    if "화장실" in text or "restroom" in lowered or "toilet" in lowered or "급똥" in text:
         add("restroom")
     if any(k in text for k in ("안전비상벨", "범죄예방", "safety bell")) and "화장실" not in text:
         add("safety_bell")

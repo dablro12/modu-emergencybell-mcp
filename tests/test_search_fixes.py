@@ -7,6 +7,8 @@ import asyncio
 import pytest
 
 from helpers import search_records, search_restrooms_by_query
+from place_context import expand_place_query
+from place_resolver import resolve_place_context
 from landmarks import lookup_landmark_coords, lookup_landmark_region
 from nemc_client import parse_treatment_day
 from phrases import format_phrase_card
@@ -95,6 +97,57 @@ async def test_find_safety_bell_itaewon_async():
     assert "찾지 못했습니다" not in text
     assert "용인" not in text
     assert "서울" in text
+
+
+def test_expand_myeongdong_cathedral_not_dong():
+    expanded = expand_place_query("명동성당")
+    assert "명동성당" in expanded
+    assert expanded != "서울특별시 중구 명동"
+    assert expand_place_query("명동성당쪽") == expand_place_query("명동성당")
+
+
+def test_strip_poi_noise():
+    from landmarks import strip_poi_noise
+
+    assert strip_poi_noise("명동성당쪽") == "명동성당"
+    assert strip_poi_noise("홍대 근처") == "홍대"
+
+
+@pytest.mark.asyncio
+async def test_resolve_myeongdong_cathedral_landmark_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    doc = {
+        "place_name": "명동",
+        "y": "37.556581",
+        "x": "126.984031",
+        "road_address": {
+            "region_1depth_name": "서울",
+            "region_2depth_name": "중구",
+            "region_3depth_name": "명동",
+        },
+    }
+
+    async def fake_kakao(query, **kwargs):
+        return (37.556581, 126.984031), doc, "kakao_keyword"
+
+    async def fake_juso(keyword: str, **kwargs):
+        return None
+
+    monkeypatch.setattr("place_resolver.geocode_via_kakao_candidates", fake_kakao)
+    monkeypatch.setattr("place_resolver.resolve_administrative", fake_juso)
+
+    ctx = await resolve_place_context("명동성당쪽")
+    assert ctx.coords is not None
+    assert abs(ctx.coords[0] - 37.5633) < 0.02
+    assert "명동성당" in (ctx.expanded_query or "")
+
+
+@pytest.mark.asyncio
+async def test_search_restroom_myeongdong_cathedral():
+    results, coords = await search_restrooms_by_query("명동성당쪽", limit=3)
+    assert len(results) >= 1
+    assert coords is not None
+    lat = float(coords.split(",")[0])
+    assert abs(lat - 37.5633) < 0.01
 
 
 @pytest.mark.asyncio

@@ -126,7 +126,8 @@ async def find_nearest_restroom(
 ) -> str:
     f"""Finds nearest public restrooms via {SERVICE_DISPLAY}.
 
-    Prefer **place_query** in natural language (e.g. 강남역, 창신동, 연산9동, 서울 마포구).
+    Prefer **place_query** in natural language — landmarks work (e.g. 명동성당, 명동성당쪽, COEX, 홍대, 강남역).
+    Colloquial phrases like "급똥" / "화장실" in the user message: extract the place name only for place_query.
     Coordinates are optional — only when the client already has GPS.
     user_type: wheelchair, child, infant_care, elderly_safety (restroom wall button), general.
     If user_type is general, keywords in place_query (휠체어/기저귀/비상벨) are auto-detected.
@@ -410,8 +411,9 @@ async def find_accessible_facility_tool(
 ) -> str:
     f"""Finds wheelchair-accessible restrooms, subway lifts, and disabled-access facilities via {SERVICE_DISPLAY}.
 
-    Natural-language place_query (e.g. 서울역, COEX, 부산 서면).
-    Optional facility_id for 한국사회보장정보원 장애인편의시설 상세 조회.
+    Natural-language place_query — landmarks OK (e.g. 명동성당, COEX, 서울역, 홍대).
+    Do NOT pass facility_id values like wheelchair_restroom — use place_query only for area search.
+    Optional facility_id: 한국사회보장정보원 wfcltId (e.g. 1234-5678) for detail lookup only.
     """
     return await find_accessible_facility(
         place_query=place_query,
@@ -437,7 +439,7 @@ async def find_outdoor_service_tool(
     f"""Finds subway-station ATM info, free public WiFi, veterinary hospitals, or bus stops via {SERVICE_DISPLAY}.
 
     For ATM: set `station_query` to the station name when possible (e.g. 강남역, 서울역).
-    `place_query` is a location hint used when the station name is unclear.
+    `place_query` is a location hint — landmarks OK (홍대, 명동성당, COEX).
     service: atm | wifi | vet_hospital | locker (물품보관함 — subway only) | bus_stop (버스정류장).
     For bus_stop, optional `station_query` can carry a stop name hint (e.g. 강남역.GC).
     For lockers prefer find_subway_facility_tool. For vet use vet_hospital not find_open_clinic.

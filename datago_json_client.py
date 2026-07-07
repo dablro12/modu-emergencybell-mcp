@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from kakao_local import geocode_place
+from landmarks import resolve_landmark_poi
 from region_parse import parse_place_query
 
 SERVICE_KEY = os.getenv("DATA_GO_KR_SERVICE_KEY", "")
@@ -43,23 +44,75 @@ async def _fetch_json(url: str, params: dict[str, Any]) -> dict[str, Any]:
         return response.json()
 
 
+def _wifi_matches_region(row: dict[str, Any], sido: str, sigungu: str) -> bool:
+    addr = str(row.get("LCTN_ROAD_NM_ADDR") or row.get("LCTN_LOTNO_ADDR") or "")
+    blob = addr.replace(" ", "")
+    if sigungu and sigungu.replace(" ", "") in blob:
+        return True
+    if sido and sido[:2] in blob:
+        return True
+    return not sido and not sigungu
+
+
 async def search_free_wifi(
     *,
     place_query: str,
     limit: int = 5,
 ) -> list[dict[str, Any]]:
-    sido, sigungu = parse_place_query(place_query)
-    addr_hint = " ".join(part for part in (sido, sigungu, place_query) if part).strip()
-    params: dict[str, Any] = {
-        "pageNo": 1,
-        "numOfRows": min(limit, 100),
-        "returnType": "json",
-    }
-    if addr_hint:
-        params["cond[LCTN_ROAD_NM_ADDR::LIKE]"] = addr_hint.split()[0] if sido else addr_hint[:20]
+    from place_resolver import resolve_place_context
 
-    data = await _fetch_json(WIFI_BASE, params)
-    return _items(data)[:limit]
+    ctx = await resolve_place_context(place_query)
+    sido, sigungu = ctx.sido or "", ctx.sigungu or ""
+    if not sigungu:
+        parsed_sido, parsed_sigungu = parse_place_query(place_query)
+        sido = sido or parsed_sido
+        sigungu = sigungu or parsed_sigungu
+
+    poi = resolve_landmark_poi(place_query)
+    if poi and not sigungu:
+        _, region, _ = poi
+        parsed_sido, parsed_sigungu = parse_place_query(region)
+        sido = sido or parsed_sido
+        sigungu = sigungu or parsed_sigungu
+
+    search_terms: list[str] = []
+    if sigungu:
+        search_terms.append(sigungu)
+        short = sigungu.replace("구", "").replace("군", "")
+        if short and short != sigungu:
+            search_terms.append(short)
+    if sido:
+        search_terms.append(sido[:2])
+    if poi:
+        _, _, keyword = poi
+        if keyword not in search_terms:
+            search_terms.append(keyword)
+    if not search_terms:
+        search_terms.append(place_query.strip()[:20])
+
+    seen: set[str] = set()
+    all_rows: list[dict[str, Any]] = []
+    for term in search_terms:
+        params: dict[str, Any] = {
+            "pageNo": 1,
+            "numOfRows": min(max(limit * 4, 20), 100),
+            "returnType": "json",
+            "cond[LCTN_ROAD_NM_ADDR::LIKE]": term,
+        }
+        data = await _fetch_json(WIFI_BASE, params)
+        for row in _items(data):
+            dedupe_key = f"{row.get('INSTL_PLC_NM', '')}|{row.get('LCTN_ROAD_NM_ADDR', '')}"
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            all_rows.append(row)
+
+    if sido or sigungu:
+        filtered = [row for row in all_rows if _wifi_matches_region(row, sido, sigungu)]
+        if filtered:
+            all_rows = filtered
+
+    return all_rows[:limit]
 
 
 async def search_vet_hospitals(

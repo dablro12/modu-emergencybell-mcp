@@ -10,6 +10,7 @@ import httpx
 
 from helpers import haversine_m, search_records, search_restrooms_by_query
 from kakao_local import geocode_place
+from landmarks import extract_landmark_search_term
 from region_parse import parse_place_query, region_full_prefix
 from subway_facility import find_subway_facility
 
@@ -17,6 +18,7 @@ SERVICE_KEY = os.getenv("DATA_GO_KR_SERVICE_KEY", "")
 BASE_URL = "https://apis.data.go.kr/B554287/DisabledPersonConvenientFacility"
 DETAIL_PATH = "getFacInfoOpenApiJpEvalInfoList"
 LIST_PATH = "getDisConvFaclList"
+MAX_DISABLED_DISTANCE_M = 5000
 
 
 def _require_key() -> str:
@@ -70,13 +72,21 @@ def _parse_list_rows(xml_text: str) -> list[dict[str, Any]]:
     return rows
 
 
-def _search_name(place_query: str) -> str:
+def _search_name(place_query: str, *, original_query: str = "") -> str:
+    for candidate in (original_query, place_query):
+        term = extract_landmark_search_term(candidate)
+        if term and not term.isdigit():
+            return term
     text = place_query.strip()
     for suffix in ("역", " 지하철역", " subway station"):
         if text.endswith(suffix):
             return text[: -len(suffix)] or text
-    tokens = [t for t in text.replace(",", " ").split() if len(t) >= 2]
-    return tokens[-1] if tokens else text
+    tokens = [
+        t
+        for t in text.replace(",", " ").split()
+        if len(t) >= 2 and not t.isdigit() and not t.startswith("(")
+    ]
+    return tokens[0] if tokens else text
 
 
 def _matches_region(address: str, region_prefix: str) -> bool:
@@ -101,10 +111,11 @@ async def _search_disabled_facilities(
     limit: int,
     latitude: float | None = None,
     longitude: float | None = None,
+    original_query: str = "",
 ) -> list[dict[str, Any]]:
     sido, sigungu = parse_place_query(place_query)
     region_prefix = region_full_prefix(sido, sigungu)
-    search_name = _search_name(place_query)
+    search_name = _search_name(place_query, original_query=original_query or place_query)
 
     params: dict[str, Any] = {
         "serviceKey": _require_key(),
@@ -135,7 +146,8 @@ async def _search_disabled_facilities(
                 row["distance_m"] = None
         with_dist = [r for r in rows if r.get("distance_m") is not None]
         if with_dist:
-            rows = sorted(with_dist, key=lambda r: r["distance_m"]) + [
+            nearby = [r for r in with_dist if r["distance_m"] <= MAX_DISABLED_DISTANCE_M]
+            rows = sorted(nearby or with_dist, key=lambda r: r["distance_m"]) + [
                 r for r in rows if r.get("distance_m") is None
             ]
 
@@ -152,8 +164,10 @@ async def find_accessible_facility(
     from place_context import is_valid_wfclt_id
     from place_resolver import resolve_place_context
 
+    original_query = place_query.strip()
     ctx = await resolve_place_context(place_query)
-    place_query = ctx.expanded_query or place_query
+    expanded_query = ctx.expanded_query or place_query
+    display_query = original_query or expanded_query
     if facility_id and not is_valid_wfclt_id(facility_id):
         facility_id = None
 
@@ -170,22 +184,22 @@ async def find_accessible_facility(
         ]
         return "\n".join(lines)
 
-    coords = await geocode_place(place_query)
+    coords = ctx.coords or await geocode_place(original_query or expanded_query)
     lat, lng = (coords[0], coords[1]) if coords else (None, None)
 
-    lines = [f"## 접근성·편의시설 — {place_query}", ""]
+    lines = [f"## 접근성·편의시설 — {display_query}", ""]
     if coords:
         lines.append(f"- 기준 좌표: {lat:.6f}, {lng:.6f}")
         lines.append("")
 
-    if include_subway and ("역" in place_query or "지하철" in place_query):
-        subway_text = find_subway_facility(place_query, facility_type="accessibility", limit=limit)
+    if include_subway and ("역" in display_query or "지하철" in display_query):
+        subway_text = find_subway_facility(display_query, facility_type="accessibility", limit=limit)
         if "찾지 못했습니다" not in subway_text:
             lines.append(subway_text)
             lines.append("")
 
     restrooms, _ = await search_restrooms_by_query(
-        place_query,
+        original_query or display_query,
         radius=800,
         user_type="wheelchair",
         limit=limit,
@@ -200,7 +214,8 @@ async def find_accessible_facility(
         lines.append("")
 
     disabled_rows = await _search_disabled_facilities(
-        place_query=place_query,
+        place_query=expanded_query,
+        original_query=original_query or display_query,
         limit=limit,
         latitude=lat,
         longitude=lng,
@@ -241,7 +256,7 @@ async def find_accessible_facility(
 
     if len(lines) <= 3:
         return (
-            f"'{place_query}' 근처 접근성 시설을 찾지 못했습니다.\n"
+            f"'{display_query}' 근처 접근성 시설을 찾지 못했습니다.\n"
             "- 지하철역이면 `find_subway_facility`도 시도해 보세요.\n"
             "- 시설 ID를 알면 `facility_id`로 상세 조회 가능합니다."
         )
