@@ -49,6 +49,11 @@ PlayMCP 등록·심사용 문서입니다. 기술 배포는 [DEPLOY_KC.md](./DEP
 | `find_accessible_facility_tool` | 서울역 휠체어 화장실 | 공중화장실 + 지하철 + 장애인편의시설 API |
 | `find_outdoor_service_tool` | 명동 ATM / 무료 와이파이 / 동물병원 | 금융맵 + data.go.kr |
 
+### `find_accessible_facility_tool`
+
+- 장소명 검색: `getDisConvFaclList` (목록) + `getFacInfoOpenApiJpEvalInfoList` (기구표 상세)
+- `facility_id`로 승강기·장애인화장실 등 기구표 직접 조회 가능
+
 ### `find_outdoor_service_tool` service 값
 
 - `atm` — 금융결제원 금융맵 (운영 URL 우선, 실패 시 테스트베드 재시도)

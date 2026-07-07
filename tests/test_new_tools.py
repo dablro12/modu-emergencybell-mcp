@@ -105,6 +105,20 @@ async def test_safe182_live():
 
 
 @pytest.mark.asyncio
+async def test_disabled_facility_list_live():
+    import os
+
+    if not os.getenv("DATA_GO_KR_SERVICE_KEY"):
+        pytest.skip("DATA_GO_KR_SERVICE_KEY not set")
+
+    from accessible_facility_client import _search_disabled_facilities
+
+    rows = await _search_disabled_facilities(place_query="서울역", limit=3)
+    assert len(rows) >= 1
+    assert any("서울" in (row.get("faclNm") or "") or "서울" in (row.get("lcMnad") or "") for row in rows)
+
+
+@pytest.mark.asyncio
 async def test_disabled_facility_detail_live():
     import os
 
