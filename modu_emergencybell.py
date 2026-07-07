@@ -27,6 +27,7 @@ from subway_facility import find_subway_facility
 from emergency_guide import emergency_guide
 from veteran_hospital import find_veteran_hospitals_near
 from intent_routing import classify_and_route, resolve_effective_place
+from mcp_prompts import register_prompts
 from place_resolver import resolve_place_context
 from place_context import (
     infer_user_type_from_text,
@@ -45,6 +46,8 @@ SERVICE_DISPLAY = "modu-emergencybell(모두의비상벨)"
 MCP_IDENTIFY = "modu-emergencybell"
 
 mcp = FastMCP(MCP_IDENTIFY, host=MCP_HOST, port=MCP_PORT)
+
+register_prompts(mcp)
 
 TOOL_ANNOTATIONS = {
     "title": "",

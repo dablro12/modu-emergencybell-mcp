@@ -6,7 +6,7 @@ WORKDIR /app
 COPY server/requirements.txt ./server/requirements.txt
 RUN pip install --no-cache-dir -r server/requirements.txt
 
-COPY modu_emergencybell.py helpers.py hotlines.py nemc_client.py region_parse.py landmarks.py kakao_local.py juso_client.py place_context.py place_resolver.py intent_routing.py emergency_guide.py restroom_parser.py safety_bell.py crime_stats.py bus_stop.py veteran_hospital.py phrases.py datago_json_client.py subway_facility.py subway_atm.py outdoor_services.py safe182_client.py accessible_facility_client.py ./
+COPY modu_emergencybell.py helpers.py hotlines.py nemc_client.py region_parse.py landmarks.py kakao_local.py juso_client.py place_context.py place_resolver.py intent_routing.py mcp_prompts.py emergency_guide.py restroom_parser.py safety_bell.py crime_stats.py bus_stop.py veteran_hospital.py phrases.py datago_json_client.py subway_facility.py subway_atm.py outdoor_services.py safe182_client.py accessible_facility_client.py ./
 COPY scripts/ ./scripts/
 COPY data/ ./data/
 

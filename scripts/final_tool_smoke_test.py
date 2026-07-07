@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""13개 MCP Tool 상황별 스모크 테스트."""
+"""MCP Tool·Prompt 상황별 스모크 테스트."""
 
 from __future__ import annotations
 
 import asyncio
-import os
 import sys
-import traceback
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -20,6 +18,12 @@ import modu_emergencybell as mcp  # noqa: E402
 
 SCENARIOS: list[tuple[str, str, dict, str]] = [
     (
+        "classify_emergency_intent",
+        "명동성당 급똥 라우팅",
+        {"user_request": "명동성당쪽인데 급똥이야 화장실 알려줘"},
+        "find_nearest_restroom",
+    ),
+    (
         "emergency_guide_tool",
         "집에서 가스 냄새",
         {"user_request": "집에서 가스 냄새가 날 때", "place_query": "서울"},
@@ -27,99 +31,108 @@ SCENARIOS: list[tuple[str, str, dict, str]] = [
     ),
     (
         "get_emergency_hotlines",
-        "119랑 1339 차이? 아이가 열이 나요",
+        "119랑 1339 차이",
         {"situation_description": "119랑 1339 차이? 아이가 열이 나요", "language": "ko"},
         "119",
     ),
     (
         "find_nearest_restroom",
-        "강남역 근처 화장실",
+        "user_request만 (명동성당)",
+        {
+            "user_request": "명동성당쪽인데 급똥이야 화장실",
+            "limit": 3,
+        },
+        "화장실",
+    ),
+    (
+        "find_nearest_restroom",
+        "강남역 화장실",
         {"place_query": "강남역", "user_type": "general", "limit": 3},
         "화장실",
     ),
     (
         "search_restroom",
-        "명동 휠체어 화장실",
+        "명동 휠체어",
         {"query": "명동", "user_type": "wheelchair", "limit": 3},
         "화장실",
     ),
     (
         "find_open_clinic",
-        "일요일 밤 서울 마포구 소아과",
+        "일요일 밤 마포 소아과",
         {"place_query": "서울 마포구", "specialty": "pediatric", "treatment_day": "일요일"},
         "병원",
     ),
     (
         "find_emergency_room",
-        "서울 강남구 응급실",
+        "강남 응급실",
         {"place_query": "서울 강남구", "limit": 3},
         "응급",
     ),
     (
         "find_open_pharmacy",
-        "서울 종로구 오늘 약국",
-        {"place_query": "서울 종로구", "treatment_day": "월요일", "limit": 3},
+        "창신동 약국",
+        {"place_query": "창신동", "user_request": "종로구 창신동 약국", "limit": 3},
         "약국",
     ),
     (
         "find_safety_bell",
-        "서울 이태원 안전비상벨",
-        {"place_query": "서울 이태원", "radius_m": 500, "limit": 3},
+        "이태원 안전비상벨",
+        {"place_query": "서울 이태원", "user_request": "이태원 안전비상벨", "radius_m": 500, "limit": 3},
         "비상벨",
     ),
     (
         "get_phrase_card",
-        "외국인 병원 문장",
-        {"scenario": "hospital_visit", "language": "en"},
-        "hospital",
-    ),
-    (
-        "find_open_pharmacy",
-        "창신동만으로 약국 (동→구 자동)",
-        {"place_query": "창신동", "limit": 3},
-        "약국",
+        "약 알레르기 영어",
+        {"scenario": "pharmacy_allergy_check", "language": "en"},
+        "allergic",
     ),
     (
         "find_open_clinic",
-        "연산9동 내과 (동→구 자동)",
+        "연산9동 내과",
         {"place_query": "연산9동", "specialty": "internal_medicine", "limit": 3},
         "의원",
     ),
     (
         "find_subway_facility_tool",
-        "서울역 엘리베이터 (alias)",
+        "서울역 엘리베이터",
         {"station_query": "서울역", "facility_type": "elevator", "limit": 3},
         "접근",
     ),
     (
         "find_safe_place",
-        "종로구 아동안전지킴이집",
+        "종로 안전지킴이집",
         {"place_query": "서울 종로구", "category": "child_safety_house", "limit": 3},
         "안전",
     ),
     (
         "find_accessible_facility_tool",
-        "서울역 휠체어 접근",
-        {"place_query": "서울역", "include_subway": True, "limit": 3},
-        "접근성",
+        "명동성당 접근성",
+        {"place_query": "명동성당", "user_request": "명동성당 휠체어", "include_subway": True, "limit": 3},
+        "접근",
     ),
     (
         "find_outdoor_service_tool",
-        "명동 ATM",
-        {"place_query": "명동", "service": "atm", "limit": 3},
-        "ATM",
-    ),
-    (
-        "find_outdoor_service_tool",
-        "서울 종로 무료 와이파이",
-        {"place_query": "서울 종로구", "service": "wifi", "limit": 3},
+        "홍대 WiFi",
+        {"place_query": "홍대", "service": "wifi", "user_request": "홍대 와이파이", "limit": 3},
         "WiFi",
     ),
     (
         "find_outdoor_service_tool",
-        "강남 동물병원",
+        "강남역 버스정류장",
+        {"place_query": "강남역", "service": "bus_stop", "limit": 3},
+        "버스",
+    ),
+    (
+        "find_outdoor_service_tool",
+        "동물병원",
         {"place_query": "서울 강남구", "service": "vet_hospital", "limit": 3},
         "동물",
+    ),
+    (
+        "find_veteran_hospital",
+        "보훈 위탁병원",
+        {"place_query": "강남구", "user_request": "보훈 위탁병원", "limit": 3},
+        "보훈",
     ),
 ]
 
@@ -128,7 +141,7 @@ async def run_one(name: str, label: str, kwargs: dict, expect: str) -> dict:
     fn = getattr(mcp, name)
     try:
         result = await fn(**kwargs)
-        ok = expect.lower() in result.lower() or "찾지 못했습니다" not in result[:80]
+        ok = expect.lower() in result.lower() or "찾지 못했습니다" not in result[:120]
         return {
             "tool": name,
             "label": label,
@@ -147,7 +160,7 @@ async def run_one(name: str, label: str, kwargs: dict, expect: str) -> dict:
 
 
 async def main() -> int:
-    print("=== modu-emergencybell Final Tool Smoke Test ===\n")
+    print("=== modu-emergencybell Tool Smoke Test ===\n")
     results = []
     for name, label, kwargs, expect in SCENARIOS:
         row = await run_one(name, label, kwargs, expect)
