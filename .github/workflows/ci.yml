@@ -25,4 +25,7 @@ jobs:
         run: python scripts/process_restroom_data.py
 
       - name: Run tests
-        run: pytest tests/ -q --ignore=tests/test_juso_client.py
+        env:
+          DATA_GO_KR_SERVICE_KEY: ""
+          DATA_GO_KR_SERVICE_KEY_ENCODED: ""
+        run: pytest tests/ -q --ignore=tests/test_juso_client.py -m "not live"

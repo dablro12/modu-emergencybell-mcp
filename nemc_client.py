@@ -46,9 +46,19 @@ SPECIALTY_CODES = {
 
 
 def _require_key() -> str:
-    if not SERVICE_KEY:
+    key = (os.getenv("DATA_GO_KR_SERVICE_KEY") or "").strip()
+    if not key:
         raise ValueError("DATA_GO_KR_SERVICE_KEY is not set")
-    return SERVICE_KEY
+    return key
+
+
+def _service_keys() -> list[str]:
+    keys: list[str] = []
+    for env_name in ("DATA_GO_KR_SERVICE_KEY", "DATA_GO_KR_SERVICE_KEY_ENCODED"):
+        value = (os.getenv(env_name) or "").strip()
+        if value and value not in keys:
+            keys.append(value)
+    return keys
 
 
 def _parse_xml_items(xml_text: str) -> list[dict[str, str]]:
@@ -63,15 +73,6 @@ def _parse_xml_items(xml_text: str) -> list[dict[str, str]]:
         if row:
             items.append(row)
     return items
-
-
-def _service_keys() -> list[str]:
-    keys: list[str] = []
-    if SERVICE_KEY:
-        keys.append(SERVICE_KEY)
-    if SERVICE_KEY_ENCODED and SERVICE_KEY_ENCODED not in keys:
-        keys.append(SERVICE_KEY_ENCODED)
-    return keys
 
 
 async def _get_xml(url: str, params: dict[str, Any]) -> list[dict[str, str]]:

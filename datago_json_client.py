@@ -17,9 +17,10 @@ VET_BASE = "https://apis.data.go.kr/1741000/animal_hospitals/info"
 
 
 def _require_key() -> str:
-    if not SERVICE_KEY:
+    key = (os.getenv("DATA_GO_KR_SERVICE_KEY") or "").strip()
+    if not key:
         raise ValueError("DATA_GO_KR_SERVICE_KEY is not set")
-    return SERVICE_KEY
+    return key
 
 
 def _items(payload: dict[str, Any]) -> list[dict[str, Any]]:

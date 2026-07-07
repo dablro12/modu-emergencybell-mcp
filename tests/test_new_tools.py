@@ -120,12 +120,13 @@ def test_search_subway_atm_unknown():
     assert "찾지 못했습니다" in text
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_wifi_api_live():
     pytest.importorskip("httpx")
     import os
 
-    if not os.getenv("DATA_GO_KR_SERVICE_KEY"):
+    if not (os.getenv("DATA_GO_KR_SERVICE_KEY") or "").strip():
         pytest.skip("DATA_GO_KR_SERVICE_KEY not set")
 
     from datago_json_client import search_free_wifi
@@ -135,11 +136,12 @@ async def test_wifi_api_live():
     assert any(k in rows[0] for k in ("LCTN_ROAD_NM_ADDR", "INSTL_PLC_NM", "INSTL_FCLT_SE_NM"))
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_vet_api_live():
     import os
 
-    if not os.getenv("DATA_GO_KR_SERVICE_KEY"):
+    if not (os.getenv("DATA_GO_KR_SERVICE_KEY") or "").strip():
         pytest.skip("DATA_GO_KR_SERVICE_KEY not set")
 
     from datago_json_client import search_vet_hospitals
@@ -161,11 +163,12 @@ async def test_safe182_live():
     assert "안전Dream" in text or "아동" in text or "찾지 못했습니다" in text
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_disabled_facility_list_live():
     import os
 
-    if not os.getenv("DATA_GO_KR_SERVICE_KEY"):
+    if not (os.getenv("DATA_GO_KR_SERVICE_KEY") or "").strip():
         pytest.skip("DATA_GO_KR_SERVICE_KEY not set")
 
     from accessible_facility_client import _search_disabled_facilities
@@ -175,11 +178,12 @@ async def test_disabled_facility_list_live():
     assert any("서울" in (row.get("faclNm") or "") or "서울" in (row.get("lcMnad") or "") for row in rows)
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_disabled_facility_detail_live():
     import os
 
-    if not os.getenv("DATA_GO_KR_SERVICE_KEY"):
+    if not (os.getenv("DATA_GO_KR_SERVICE_KEY") or "").strip():
         pytest.skip("DATA_GO_KR_SERVICE_KEY not set")
 
     from accessible_facility_client import find_accessible_facility

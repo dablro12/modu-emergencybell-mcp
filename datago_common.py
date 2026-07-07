@@ -15,10 +15,18 @@ SERVICE_KEY_ENCODED = os.getenv("DATA_GO_KR_SERVICE_KEY_ENCODED", "")
 
 def service_keys() -> list[str]:
     keys: list[str] = []
-    for value in (SERVICE_KEY, SERVICE_KEY_ENCODED):
+    for env_name in ("DATA_GO_KR_SERVICE_KEY", "DATA_GO_KR_SERVICE_KEY_ENCODED"):
+        value = (os.getenv(env_name) or "").strip()
         if value and value not in keys:
             keys.append(value)
     return keys
+
+
+def require_service_key() -> str:
+    keys = service_keys()
+    if not keys:
+        raise ValueError("DATA_GO_KR_SERVICE_KEY is not set")
+    return keys[0]
 
 
 def parse_xml_items(xml_text: str) -> list[dict[str, str]]:

@@ -281,19 +281,28 @@ async def health_triage(
     if triage.urgency in ("critical", "urgent") or triage.category.startswith(
         ("chemical", "wrong", "ingestion", "foreign")
     ):
-        sections.append(await find_emergency_rooms_near(place_query=place, limit=3))
-    sections.append(
-        await find_open_clinics_near(
-            place_query=place,
-            specialty=nemc_specialty,
-            treatment_day=qt,
-            limit=5,
-        )
-    )
-    if triage.category in ("drug_question", "symptom") or triage.urgency != "low":
+        try:
+            sections.append(await find_emergency_rooms_near(place_query=place, limit=3))
+        except Exception as exc:  # noqa: BLE001
+            sections.append(f"_응급실 API: {exc}_")
+    try:
         sections.append(
-            await find_open_pharmacies_near(place_query=place, treatment_day=qt, limit=3)
+            await find_open_clinics_near(
+                place_query=place,
+                specialty=nemc_specialty,
+                treatment_day=qt,
+                limit=5,
+            )
         )
+    except Exception as exc:  # noqa: BLE001
+        sections.append(f"_진료 병원 API: {exc}_")
+    if triage.category in ("drug_question", "symptom") or triage.urgency != "low":
+        try:
+            sections.append(
+                await find_open_pharmacies_near(place_query=place, treatment_day=qt, limit=3)
+            )
+        except Exception as exc:  # noqa: BLE001
+            sections.append(f"_약국 API: {exc}_")
     if time_note:
         sections.append(f"_{time_note}_")
 

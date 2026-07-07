@@ -22,9 +22,10 @@ MAX_DISABLED_DISTANCE_M = 5000
 
 
 def _require_key() -> str:
-    if not SERVICE_KEY:
+    key = (os.getenv("DATA_GO_KR_SERVICE_KEY") or "").strip()
+    if not key:
         raise ValueError("DATA_GO_KR_SERVICE_KEY is not set")
-    return SERVICE_KEY
+    return key
 
 
 def _parse_detail(xml_text: str) -> dict[str, str] | None:

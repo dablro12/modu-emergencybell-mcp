@@ -36,8 +36,14 @@ def test_health_triage_intent() -> None:
     assert "health_triage" in intents
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_health_triage_integration() -> None:
+    import os
+
+    if not (os.getenv("DATA_GO_KR_SERVICE_KEY") or "").strip():
+        pytest.skip("DATA_GO_KR_SERVICE_KEY not set")
+
     from health_triage import health_triage
 
     result = await health_triage("아이 레고 삼켰어 서울 마포구", place_query="마포구")
