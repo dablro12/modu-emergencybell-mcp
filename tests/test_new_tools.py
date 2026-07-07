@@ -1,0 +1,104 @@
+"""Tests for v0.4.0 new tools (subway, wifi, vet, outdoor services)."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from datago_json_client import format_vet_list, format_wifi_list
+from outdoor_services import normalize_service
+from scripts.process_subway_data import normalize_station
+from subway_facility import find_subway_facility, load_index
+
+SUBWAY_INDEX = Path(__file__).resolve().parent.parent / "data" / "subway" / "subway_index.json"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def ensure_subway_index() -> None:
+    if not SUBWAY_INDEX.exists():
+        import scripts.process_subway_data as processor
+
+        processor.main()
+
+
+def test_normalize_station():
+    assert normalize_station("강남역") == "강남"
+    assert normalize_station("서울 역") == "서울"
+
+
+def test_subway_index_loaded():
+    data = load_index()
+    assert data.get("meta", {}).get("station_count", 0) > 100
+
+
+def test_find_subway_gangnam():
+    text = find_subway_facility("강남역")
+    assert "강남" in text
+    assert "물품보관함" in text
+
+
+def test_find_subway_busan():
+    text = find_subway_facility("서면")
+    assert "물품보관함" in text or "등록된" in text
+
+
+def test_find_subway_unknown():
+    text = find_subway_facility("존재하지않는역")
+    assert "찾지 못했습니다" in text
+
+
+def test_service_aliases():
+    assert normalize_service("동물병원") == "vet_hospital"
+    assert normalize_service("와이파이") == "wifi"
+    assert normalize_service("atm") == "atm"
+
+
+def test_format_wifi_empty():
+    assert "찾지 못했습니다" in format_wifi_list([], query="테스트")
+
+
+def test_format_vet_empty():
+    assert "찾지 못했습니다" in format_vet_list([], query="테스트")
+
+
+@pytest.mark.asyncio
+async def test_wifi_api_live():
+    pytest.importorskip("httpx")
+    import os
+
+    if not os.getenv("DATA_GO_KR_SERVICE_KEY"):
+        pytest.skip("DATA_GO_KR_SERVICE_KEY not set")
+
+    from datago_json_client import search_free_wifi
+
+    rows = await search_free_wifi(place_query="서울", limit=1)
+    assert len(rows) >= 1
+    assert any(k in rows[0] for k in ("LCTN_ROAD_NM_ADDR", "INSTL_PLC_NM", "INSTL_FCLT_SE_NM"))
+
+
+@pytest.mark.asyncio
+async def test_vet_api_live():
+    import os
+
+    if not os.getenv("DATA_GO_KR_SERVICE_KEY"):
+        pytest.skip("DATA_GO_KR_SERVICE_KEY not set")
+
+    from datago_json_client import search_vet_hospitals
+
+    rows = await search_vet_hospitals(place_query="서울", limit=3)
+    assert len(rows) >= 1
+
+
+@pytest.mark.asyncio
+async def test_odsay_auth_message():
+    import os
+
+    if not os.getenv("ODSAY_API_KEY"):
+        pytest.skip("ODSAY_API_KEY not set")
+
+    from odsay_client import find_transit_route
+
+    text = await find_transit_route(origin_query="서울역", destination_query="강남역")
+    assert "서울역" in text or "ODsay" in text or "강남" in text

@@ -10,7 +10,6 @@ from mcp.server.fastmcp import FastMCP
 from helpers import (
     fetch_restrooms,
     format_restroom_list,
-    get_record_by_id,
     search_restrooms_by_query,
 )
 from hotlines import format_emergency_hotlines
@@ -20,7 +19,10 @@ from nemc_client import (
     find_open_pharmacies_near,
 )
 from phrases import format_phrase_card
+from outdoor_services import find_outdoor_service
+from odsay_client import find_transit_route
 from safety_bell import find_safety_bells_near
+from subway_facility import find_subway_facility
 
 load_dotenv()
 
@@ -271,15 +273,70 @@ async def get_phrase_card(
 @mcp.tool(
     annotations={
         **TOOL_ANNOTATIONS,
-        "title": "Get Restroom Detail",
+        "title": "Find Subway Locker And Accessibility",
     }
 )
-async def get_restroom_detail(record_id: str) -> str:
-    f"""Returns full detail for one public restroom by MOIS management ID via {SERVICE_DISPLAY}."""
-    record = get_record_by_id(record_id)
-    if not record:
-        return f"Record `{record_id}` not found."
-    return format_restroom_list([{**record, "distance_m": None}])
+async def find_subway_facility_tool(
+    station_query: str,
+    facility_type: str = "all",
+    limit: int = 5,
+) -> str:
+    f"""Finds subway coin lockers and accessibility (elevator, wheelchair lift) via {SERVICE_DISPLAY}.
+
+    Natural-language station name only (e.g. 강남역, 서울역, 부산 서면, 인천 계양).
+    facility_type: all, locker, accessibility.
+    Covers Seoul, Busan, Incheon subway data from local public datasets.
+    """
+    return find_subway_facility(station_query, facility_type=facility_type, limit=limit)
+
+
+@mcp.tool(
+    annotations={
+        **TOOL_ANNOTATIONS,
+        "title": "Find Public Transit Route",
+    }
+)
+async def find_transit_route_tool(
+    origin_query: str,
+    destination_query: str,
+    optimize: int = 0,
+) -> str:
+    f"""Public transit directions between two places via {SERVICE_DISPLAY} (ODsay).
+
+    Examples: origin=서울역, destination=강남역. Uses geocoding + ODsay path search.
+    optimize: 0=recommended, 1=minimum transfers, 2=minimum walking.
+    """
+    return await find_transit_route(
+        origin_query=origin_query,
+        destination_query=destination_query,
+        optimize=optimize,
+    )
+
+
+@mcp.tool(
+    annotations={
+        **TOOL_ANNOTATIONS,
+        "title": "Find ATM WiFi Or Vet Hospital",
+    }
+)
+async def find_outdoor_service_tool(
+    place_query: str,
+    service: str = "atm",
+    wheelchair_accessible: bool = False,
+    limit: int = 5,
+) -> str:
+    f"""Finds nearby ATM, free public WiFi, or veterinary hospitals via {SERVICE_DISPLAY}.
+
+    place_query: natural language (e.g. 명동, 서울역, 부산 해운대).
+    service: atm | wifi | vet_hospital (or 동물병원, 와이파이).
+    wheelchair_accessible: for ATM only — filter wheelchair-accessible machines.
+    """
+    return await find_outdoor_service(
+        place_query=place_query,
+        service=service,
+        wheelchair_accessible=wheelchair_accessible,
+        limit=limit,
+    )
 
 
 def main() -> None:

@@ -79,7 +79,25 @@ JSON 응답이 오면 KC 배포 성공.
 
 ---
 
-## 6. PlayMCP 마켓
+## 6. GitHub Secrets (Docker 빌드 시 API 키 주입)
+
+Repository → **Settings** → **Secrets and variables** → **Actions**
+
+| Secret | 용도 |
+|--------|------|
+| `DATA_GO_KR_SERVICE_KEY` | 공공데이터 (Decoding) |
+| `DATA_GO_KR_SERVICE_KEY_ENCODED` | 공공데이터 (Encoding, NEMC XML용) |
+| `KAKAO_REST_API_KEY` | Kakao Local 지오코딩 |
+| `ODSAY_API_KEY` | ODsay 대중교통 길찾기 |
+| `KFTC_FINMAP_CLIENT_ID` | 금융맵 OAuth |
+| `KFTC_FINMAP_CLIENT_SECRET` | 금융맵 OAuth |
+| `KFTC_FINMAP_BASE_URL` | `https://testfinmapapi.kftc.or.kr` (운영 전환 시 변경) |
+
+> ODsay: KC 배포 IP를 ODsay 애플리케이션 **Server IP**에 등록해야 `find_transit_route` 동작.
+
+---
+
+## 7. PlayMCP 마켓
 
 https://playmcp.kakao.com/console
 

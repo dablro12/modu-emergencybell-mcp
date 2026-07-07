@@ -21,8 +21,10 @@ jobs:
           pip install -r server/requirements.txt
           pip install pytest pytest-asyncio
 
-      - name: Process restroom data
-        run: python scripts/process_restroom_data.py
+      - name: Process datasets
+        run: |
+          python scripts/process_restroom_data.py
+          python scripts/process_subway_data.py
 
       - name: Run tests
         run: pytest tests/ -v

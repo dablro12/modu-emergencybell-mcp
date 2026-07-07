@@ -44,3 +44,7 @@ jobs:
             DATA_GO_KR_SERVICE_KEY=${{ secrets.DATA_GO_KR_SERVICE_KEY }}
             DATA_GO_KR_SERVICE_KEY_ENCODED=${{ secrets.DATA_GO_KR_SERVICE_KEY_ENCODED }}
             KAKAO_REST_API_KEY=${{ secrets.KAKAO_REST_API_KEY }}
+            ODSAY_API_KEY=${{ secrets.ODSAY_API_KEY }}
+            KFTC_FINMAP_CLIENT_ID=${{ secrets.KFTC_FINMAP_CLIENT_ID }}
+            KFTC_FINMAP_CLIENT_SECRET=${{ secrets.KFTC_FINMAP_CLIENT_SECRET }}
+            KFTC_FINMAP_BASE_URL=${{ secrets.KFTC_FINMAP_BASE_URL }}
