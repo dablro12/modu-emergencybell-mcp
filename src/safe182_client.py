@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from math import cos, radians
 from typing import Any
 from urllib.parse import urlencode
 
@@ -36,9 +37,11 @@ CATEGORY_ALIASES = {
 
 
 def _require_auth() -> tuple[str, str]:
-    if not AUTH_ID or not AUTH_KEY:
+    auth_id = os.getenv("SAFE182_AUTH_ID", AUTH_ID)
+    auth_key = os.getenv("SAFE182_AUTH_KEY", AUTH_KEY)
+    if not auth_id or not auth_key:
         raise ValueError("SAFE182_AUTH_ID / SAFE182_AUTH_KEY is not set")
-    return AUTH_ID, AUTH_KEY
+    return auth_id, auth_key
 
 
 def normalize_category(value: str) -> list[str]:
@@ -51,7 +54,7 @@ def normalize_category(value: str) -> list[str]:
 
 def _bbox(lat: float, lng: float, radius_m: int = 1000) -> dict[str, str]:
     delta = radius_m / 111_000
-    cos_lat = max(abs(lat), 0.01)
+    cos_lat = max(abs(cos(radians(lat))), 0.01)
     delta_lng = radius_m / (111_000 * cos_lat)
     return {
         "minY": f"{lat - delta:.6f}",
@@ -59,6 +62,36 @@ def _bbox(lat: float, lng: float, radius_m: int = 1000) -> dict[str, str]:
         "minX": f"{lng - delta_lng:.6f}",
         "maxX": f"{lng + delta_lng:.6f}",
     }
+
+
+def _admin_center_query(place_query: str) -> str | None:
+    text = (place_query or "").strip()
+    if not text:
+        return None
+
+    if text in {"서울", "서울시", "서울특별시"}:
+        return "서울시청"
+    if text in {"부산", "부산시", "부산광역시"}:
+        return "부산시청"
+
+    parts = text.split()
+    last = parts[-1]
+    if len(parts) > 1 and parts[1].endswith(("구", "군", "시")):
+        sido = parts[0]
+        if sido.endswith(("특별시", "광역시", "특별자치시", "특별자치도")):
+            sido = sido[:2]
+        return f"{sido} {parts[1]}청"
+
+    if last.endswith(("구", "군")):
+        if len(parts) > 1:
+            sido = parts[0]
+            if sido.endswith(("특별시", "광역시", "특별자치시", "특별자치도")):
+                sido = sido[:2]
+            return f"{sido} {last}청"
+        return f"{last}청"
+    if last.endswith("시"):
+        return f"{last}청"
+    return None
 
 
 async def search_safe_places(
@@ -69,6 +102,11 @@ async def search_safe_places(
     limit: int = 5,
 ) -> str:
     coords = await geocode_place(place_query)
+    if not coords:
+        fallback_query = _admin_center_query(place_query)
+        if fallback_query:
+            coords = await geocode_place(fallback_query)
+
     if not coords:
         return f"'{place_query}' 위치를 찾지 못했습니다. 역·구 이름으로 다시 시도해 주세요."
 

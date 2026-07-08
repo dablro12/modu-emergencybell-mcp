@@ -8,6 +8,7 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -82,6 +83,28 @@ def build_summaries(records: list[dict]) -> dict:
     }
 
 
+def write_json_atomic(path: Path, payload: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as f:
+            tmp_path = Path(f.name)
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        tmp_path.chmod(0o644)
+        tmp_path.replace(path)
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink()
+
+
 def main() -> None:
     source = find_source_csv()
     records: list[dict] = []
@@ -129,8 +152,7 @@ def main() -> None:
 
     for filename, payload in outputs.items():
         path = DATA_DIR / filename
-        with path.open("w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2)
+        write_json_atomic(path, payload)
         print(f"Wrote {path} ({path.stat().st_size:,} bytes)")
 
     print(f"\nDone. {len(records):,} records processed from {source.name}")

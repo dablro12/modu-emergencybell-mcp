@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from typing import Annotated
 
 _APP_DIR = Path(__file__).resolve().parent / "src"
 if str(_APP_DIR) not in sys.path:
@@ -12,6 +13,7 @@ if str(_APP_DIR) not in sys.path:
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
+from pydantic import Field
 
 from helpers import (
     fetch_restrooms,
@@ -63,6 +65,32 @@ TOOL_ANNOTATIONS = {
     "idempotentHint": True,
 }
 
+UserRequest = Annotated[
+    str,
+    Field(description="사용자가 보낸 원문 전체입니다. 증상, 긴급도, 장소, 복합 요청을 생략하지 말고 그대로 넣습니다."),
+]
+OptionalUserRequest = Annotated[
+    str | None,
+    Field(description="사용자가 보낸 원문 전체입니다. place_query만으로 부족할 때 위치·상황·필터 단서를 보존합니다."),
+]
+PlaceQuery = Annotated[
+    str,
+    Field(description="장소명, 랜드마크, 역명, 행정구역만 넣습니다. 증상·요청 문장·시설 종류는 넣지 않습니다."),
+]
+OptionalPlaceQuery = Annotated[
+    str | None,
+    Field(description="장소명, 랜드마크, 역명, 행정구역만 넣습니다. 모르면 user_request 원문으로 보완합니다."),
+]
+Language = Annotated[
+    str,
+    Field(description="응답 언어 힌트입니다. 기본값은 ko이며, 다국어 사용자 입력에는 en, zh, ja 등을 사용합니다."),
+]
+Limit = Annotated[int, Field(description="반환할 최대 결과 수입니다. 카카오톡 응답에서는 보통 3~5개를 권장합니다.")]
+Latitude = Annotated[float | None, Field(description="현재 위치의 위도입니다. 좌표가 있을 때만 사용하고, 장소명이 있으면 place_query를 우선합니다.")]
+Longitude = Annotated[float | None, Field(description="현재 위치의 경도입니다. 좌표가 있을 때만 사용하고, 장소명이 있으면 place_query를 우선합니다.")]
+Radius = Annotated[int, Field(description="검색 반경(미터)입니다. 기본 500m이며 너무 넓히면 결과 관련성이 떨어질 수 있습니다.")]
+RadiusM = Annotated[int, Field(description="검색 반경(미터)입니다. 기본 500~1000m를 권장합니다.")]
+
 
 @mcp.tool(
     description=mcp_description("emergency_guide_tool"),
@@ -72,9 +100,9 @@ TOOL_ANNOTATIONS = {
     }
 )
 async def emergency_guide_tool(
-    user_request: str,
-    place_query: str | None = None,
-    language: str = "ko",
+    user_request: UserRequest,
+    place_query: OptionalPlaceQuery = None,
+    language: Language = "ko",
 ) -> str:
     f"""Primary orchestration tool for multi-intent requests in {SERVICE_DISPLAY}.
 
@@ -95,9 +123,9 @@ async def emergency_guide_tool(
     }
 )
 async def health_triage_tool(
-    user_request: str,
-    place_query: str | None = None,
-    language: str = "ko",
+    user_request: UserRequest,
+    place_query: OptionalPlaceQuery = None,
+    language: Language = "ko",
 ) -> str:
     f"""Symptom·poison·wrong-drug triage via {SERVICE_DISPLAY} (HIRA disease + MFDS e약은요 + NEMC).
 
@@ -116,9 +144,15 @@ async def health_triage_tool(
     }
 )
 async def get_emergency_hotlines(
-    situation_description: str,
-    situation: str | None = None,
-    language: str = "ko",
+    situation_description: Annotated[
+        str,
+        Field(description="사용자가 설명한 위급 상황 원문입니다. 예: 가스 냄새, 실종, 119/1339 문의."),
+    ],
+    situation: Annotated[
+        str | None,
+        Field(description="상황 태그 힌트입니다. 예: medical_urgent, police, utility_gas, poison. 모르면 비워둡니다."),
+    ] = None,
+    language: Language = "ko",
 ) -> str:
     f"""Emergency numbers (119/112/1339) for one clear situation via {SERVICE_DISPLAY}.
 
@@ -139,14 +173,17 @@ async def get_emergency_hotlines(
     }
 )
 async def find_nearest_restroom(
-    place_query: str | None = None,
-    user_request: str | None = None,
-    latitude: float | None = None,
-    longitude: float | None = None,
-    radius: int = 500,
-    user_type: str = "general",
-    open_now: bool = False,
-    limit: int = 5,
+    place_query: OptionalPlaceQuery = None,
+    user_request: OptionalUserRequest = None,
+    latitude: Latitude = None,
+    longitude: Longitude = None,
+    radius: Radius = 500,
+    user_type: Annotated[
+        str,
+        Field(description="화장실 이용자 유형입니다. general, wheelchair, infant_care, elderly_safety 중 하나를 권장합니다."),
+    ] = "general",
+    open_now: Annotated[bool, Field(description="현재 이용 가능 여부를 우선할지 여부입니다. 데이터 한계가 있어 참고용으로 사용합니다.")] = False,
+    limit: Limit = 5,
 ) -> str:
     f"""Public restroom lookup via {SERVICE_DISPLAY}. Replaces deprecated search_restroom.
 
@@ -212,13 +249,25 @@ async def find_nearest_restroom(
     }
 )
 async def find_medical_care(
-    place_query: str,
-    user_request: str | None = None,
-    care_type: str = "all",
-    specialty: str = "general",
-    treatment_day: str | None = None,
-    pharmacy_name: str | None = None,
-    limit: int = 5,
+    place_query: PlaceQuery,
+    user_request: OptionalUserRequest = None,
+    care_type: Annotated[
+        str,
+        Field(description="조회할 의료 자원입니다. all, clinic, pharmacy, emergency_room 중 하나를 권장합니다."),
+    ] = "all",
+    specialty: Annotated[
+        str,
+        Field(description="진료과 힌트입니다. general, internal, pediatric, orthopedic 등을 사용하며 모르면 general입니다."),
+    ] = "general",
+    treatment_day: Annotated[
+        str | None,
+        Field(description="요일 필터입니다. 예: 월요일, 토요일, 일요일, 공휴일. 모르면 현재 날짜 기준으로 판단합니다."),
+    ] = None,
+    pharmacy_name: Annotated[
+        str | None,
+        Field(description="특정 약국명을 찾을 때만 사용합니다. 일반 주변 약국 검색이면 비워둡니다."),
+    ] = None,
+    limit: Limit = 5,
 ) -> str:
     f"""Clinics, pharmacies, or ER beds near a region via {SERVICE_DISPLAY} (NEMC).
 
@@ -252,10 +301,13 @@ async def find_medical_care(
     }
 )
 async def find_veteran_hospital(
-    place_query: str,
-    user_request: str | None = None,
-    hospital_type: str | None = None,
-    limit: int = 5,
+    place_query: PlaceQuery,
+    user_request: OptionalUserRequest = None,
+    hospital_type: Annotated[
+        str | None,
+        Field(description="보훈 위탁병원 유형 힌트입니다. 반려동물·동물병원 요청에는 사용하지 않습니다."),
+    ] = None,
+    limit: Limit = 5,
 ) -> str:
     f"""국가보훈부 위탁병원 near a region via {SERVICE_DISPLAY}.
 
@@ -301,13 +353,16 @@ async def find_veteran_hospital(
     }
 )
 async def find_safety_bell(
-    place_query: str | None = None,
-    user_request: str | None = None,
-    latitude: float | None = None,
-    longitude: float | None = None,
-    radius_m: int = 500,
-    place_type: str | None = None,
-    limit: int = 5,
+    place_query: OptionalPlaceQuery = None,
+    user_request: OptionalUserRequest = None,
+    latitude: Latitude = None,
+    longitude: Longitude = None,
+    radius_m: RadiusM = 500,
+    place_type: Annotated[
+        str | None,
+        Field(description="비상벨 설치 장소 유형 힌트입니다. 예: 공원, 골목, 학교 주변. 모르면 비워둡니다."),
+    ] = None,
+    limit: Limit = 5,
 ) -> str:
     f"""Crime-prevention outdoor safety bells via {SERVICE_DISPLAY}.
 
@@ -336,8 +391,11 @@ async def find_safety_bell(
     }
 )
 async def get_phrase_card(
-    scenario: str = "hospital_visit",
-    language: str = "en",
+    scenario: Annotated[
+        str,
+        Field(description="보여줄 문장 카드 상황입니다. 예: hospital_visit, pharmacy_allergy_check, emergency_help."),
+    ] = "hospital_visit",
+    language: Language = "en",
 ) -> str:
     f"""Show-to-staff phrase cards for foreign visitors via {SERVICE_DISPLAY}."""
     return format_phrase_card(scenario=scenario, language=language)
@@ -351,20 +409,27 @@ async def get_phrase_card(
     }
 )
 async def find_subway_facility_tool(
-    station_query: str,
-    user_request: str | None = None,
-    facility_type: str = "all",
-    limit: int = 5,
+    station_query: Annotated[
+        str,
+        Field(description="지하철역 이름만 넣습니다. 예: 강남역, 서울역, 서면역."),
+    ],
+    user_request: OptionalUserRequest = None,
+    facility_type: Annotated[
+        str,
+        Field(description="찾을 지하철 시설입니다. all, locker, accessibility, elevator, wheelchair_lift 등을 권장합니다."),
+    ] = "all",
+    limit: Limit = 5,
 ) -> str:
     f"""Subway lockers and accessibility (elevator, wheelchair lift) via {SERVICE_DISPLAY}.
 
     For broader multi-intent travel/emergency requests, prefer `emergency_guide_tool`.
     """
+    from i18n_support import resolve_foreign_station
     from place_context import extract_place_from_text
 
-    station = station_query
+    station = resolve_foreign_station(station_query) or station_query
     if user_request:
-        hint = extract_place_from_text(user_request)
+        hint = resolve_foreign_station(user_request) or extract_place_from_text(user_request)
         if hint and "역" in hint:
             station = hint
     return find_subway_facility(station, facility_type=facility_type, limit=limit)
@@ -378,11 +443,14 @@ async def find_subway_facility_tool(
     }
 )
 async def find_safe_place(
-    place_query: str,
-    user_request: str | None = None,
-    category: str = "child_safety_house",
-    radius_m: int = 1000,
-    limit: int = 5,
+    place_query: PlaceQuery,
+    user_request: OptionalUserRequest = None,
+    category: Annotated[
+        str,
+        Field(description="Safe182 보호시설 유형입니다. child_safety_house 또는 youth를 권장합니다."),
+    ] = "child_safety_house",
+    radius_m: RadiusM = 1000,
+    limit: Limit = 5,
 ) -> str:
     f"""Safe182 child safety houses and shelters via {SERVICE_DISPLAY}."""
     effective_place, _ = await resolve_effective_place(
@@ -406,11 +474,14 @@ async def find_safe_place(
     }
 )
 async def find_accessible_facility_tool(
-    place_query: str,
-    user_request: str | None = None,
-    facility_id: str | None = None,
-    include_subway: bool = True,
-    limit: int = 5,
+    place_query: PlaceQuery,
+    user_request: OptionalUserRequest = None,
+    facility_id: Annotated[
+        str | None,
+        Field(description="장애인 편의시설 유형 ID입니다. 모르면 비워두세요. 휠체어 화장실은 user_request/place_query로 표현해도 됩니다."),
+    ] = None,
+    include_subway: Annotated[bool, Field(description="주변 지하철 접근성 시설도 함께 포함할지 여부입니다.")] = True,
+    limit: Limit = 5,
 ) -> str:
     f"""Wheelchair restrooms and disabled-access facilities via {SERVICE_DISPLAY}.
 
@@ -438,12 +509,18 @@ async def find_accessible_facility_tool(
     }
 )
 async def find_outdoor_service_tool(
-    place_query: str,
-    user_request: str | None = None,
-    service: str = "atm",
-    station_query: str | None = None,
-    wheelchair_accessible: bool = False,
-    limit: int = 5,
+    place_query: PlaceQuery,
+    user_request: OptionalUserRequest = None,
+    service: Annotated[
+        str,
+        Field(description="찾을 생활 편의 서비스입니다. atm, wifi, vet_hospital, animal_pharmacy, bus_stop 중 하나를 권장합니다."),
+    ] = "atm",
+    station_query: Annotated[
+        str | None,
+        Field(description="역 기반 서비스가 필요할 때만 역명 또는 정류장 힌트를 넣습니다. 예: 강남역, 서울역."),
+    ] = None,
+    wheelchair_accessible: Annotated[bool, Field(description="휠체어 접근 가능 시설을 우선할지 여부입니다.")] = False,
+    limit: Limit = 5,
 ) -> str:
     f"""ATM, WiFi, vet hospitals, animal pharmacies, bus stops via {SERVICE_DISPLAY}.
 

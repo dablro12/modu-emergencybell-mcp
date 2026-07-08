@@ -94,6 +94,14 @@ DRUG_HINTS = (
 )
 
 
+def _is_human_pet_drug_ingestion(text: str) -> bool:
+    """True when a human seems to have taken animal medication by mistake."""
+    lowered = (text or "").lower()
+    pet_drug = _contains_any(text, ("강아지 약", "고양이 약", "동물 약", "반려동물 약", "수의", "펫 약", "동물용"))
+    human_ingestion = _contains_any(text, ("내 약", "사람", "인 줄", "잘못 먹", "먹었", "복용", "삼켰", "mistook", "human"))
+    return pet_drug and human_ingestion
+
+
 @dataclass
 class TriageResult:
     urgency: Urgency
@@ -209,7 +217,7 @@ async def health_triage(
     place_query: str | None = None,
     language: str = "ko",
 ) -> str:
-    if is_pet_care_query(user_request):
+    if is_pet_care_query(user_request) and not _is_human_pet_drug_ingestion(user_request):
         from outdoor_services import find_outdoor_service
 
         effective, _ = await resolve_effective_place(

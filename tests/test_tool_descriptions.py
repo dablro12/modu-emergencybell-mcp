@@ -29,5 +29,9 @@ def test_all_tools_have_description() -> None:
             assert t.description and t.description.strip(), f"missing description: {t.name}"
             assert "PARAMETERS:" not in t.description, t.name
             assert len(t.description) < 200, t.name
+            for param_name, schema in t.inputSchema.get("properties", {}).items():
+                assert schema.get("description", "").strip(), (
+                    f"missing inputSchema description: {t.name}.{param_name}"
+                )
 
     asyncio.run(_run())
