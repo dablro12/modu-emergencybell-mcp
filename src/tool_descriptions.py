@@ -73,7 +73,7 @@ TOOL_BASE_KO: dict[str, str] = {
     "find_nearest_restroom": "주변 공중화장실을 검색합니다. 휠체어·기저귀교환대·노인 비상벨 옵션을 지원합니다.",
     "find_medical_care": "근처 의원·약국·응급실(병상) 정보를 NEMC 등 공공 API로 조회합니다.",
     "find_veteran_hospital": "국가보훈부 위탁병원(보훈병원)을 지역 기준으로 검색합니다.",
-    "find_safety_bell": "범죄예방용 옥외 비상벨 위치를 검색합니다. 화장실 벽 비상벨과 다릅니다.",
+    "find_safety_bell": "범죄예방용 옥외 비상벨 위치를 검색합니다.",
     "get_phrase_card": "외국인 관광객이 병원·응급 상황에서 보여줄 다국어 문구 카드를 제공합니다.",
     "find_subway_facility_tool": "지하철역 물품보관함·엘리베이터·교통약자 편의시설을 검색합니다.",
     "find_safe_place": "안전드림센터·아동안전지킴이집 등 Safe182 보호시설을 검색합니다.",
