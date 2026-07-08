@@ -40,7 +40,7 @@ from place_context import (
     normalize_situation_tag,
     normalize_specialty,
 )
-from tool_descriptions import tool_description
+from tool_descriptions import mcp_description, tool_description
 from map_preview import register_map_routes
 
 load_dotenv()
@@ -65,6 +65,7 @@ TOOL_ANNOTATIONS = {
 
 
 @mcp.tool(
+    description=mcp_description("emergency_guide_tool"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Emergency Guide (Start Here)",
@@ -87,6 +88,7 @@ async def emergency_guide_tool(
 
 
 @mcp.tool(
+    description=mcp_description("health_triage_tool"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Health Triage And Specialty Guide",
@@ -103,16 +105,11 @@ async def health_triage_tool(
     headache+sore throat after exercise, what medicine (public info only — not prescription).
     If users also ask for nearby facilities/hotlines together, prefer `emergency_guide_tool`.
     """
-    base = tool_description(
-        f"Health triage for {SERVICE_DISPLAY}. Returns urgency, hotlines, recommended department, "
-        "nearby clinics/pharmacies/ER. Not a diagnosis.",
-        "health_triage_tool",
-    )
-    _ = base
     return await health_triage(user_request, place_query=place_query, language=language)
 
 
 @mcp.tool(
+    description=mcp_description("get_emergency_hotlines"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Who To Call In This Situation",
@@ -127,7 +124,6 @@ async def get_emergency_hotlines(
 
     For mixed intents with location/facility lookup, prefer `emergency_guide_tool`.
     """
-    _ = tool_description("Hotline guidance only — does not dial.", "get_emergency_hotlines")
     return format_emergency_hotlines(
         situation_description,
         situation=normalize_situation_tag(situation),
@@ -136,6 +132,7 @@ async def get_emergency_hotlines(
 
 
 @mcp.tool(
+    description=mcp_description("find_nearest_restroom"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Find Nearest Restroom",
@@ -156,7 +153,6 @@ async def find_nearest_restroom(
     Single-intent tool. If the request also includes safety/medical/hotline needs,
     use `emergency_guide_tool` for composite tool chaining.
     """
-    _ = tool_description("Single-intent restroom search.", "find_nearest_restroom")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
@@ -209,6 +205,7 @@ async def find_nearest_restroom(
 
 
 @mcp.tool(
+    description=mcp_description("find_medical_care"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Find Clinic Pharmacy Or ER",
@@ -229,7 +226,6 @@ async def find_medical_care(
     care_type: all | clinic | pharmacy | emergency_room.
     For complex natural-language requests, prefer `emergency_guide_tool`.
     """
-    _ = tool_description("People medical facilities only.", "find_medical_care")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
@@ -249,6 +245,7 @@ async def find_medical_care(
 
 
 @mcp.tool(
+    description=mcp_description("find_veteran_hospital"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Find Veteran Entrusted Hospital",
@@ -297,6 +294,7 @@ async def find_veteran_hospital(
 
 
 @mcp.tool(
+    description=mcp_description("find_safety_bell"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Find Outdoor Safety Bell",
@@ -315,7 +313,6 @@ async def find_safety_bell(
 
     This is for street/public safety bells, not restroom wall emergency buttons.
     """
-    _ = tool_description("Street safety bells — not restroom wall buttons.", "find_safety_bell")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
@@ -332,6 +329,7 @@ async def find_safety_bell(
 
 
 @mcp.tool(
+    description=mcp_description("get_phrase_card"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Get Phrase Card",
@@ -346,6 +344,7 @@ async def get_phrase_card(
 
 
 @mcp.tool(
+    description=mcp_description("find_subway_facility_tool"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Find Subway Locker And Accessibility",
@@ -372,6 +371,7 @@ async def find_subway_facility_tool(
 
 
 @mcp.tool(
+    description=mcp_description("find_safe_place"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Find SafeDream Safety Places",
@@ -399,6 +399,7 @@ async def find_safe_place(
 
 
 @mcp.tool(
+    description=mcp_description("find_accessible_facility_tool"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Find Accessible Facility",
@@ -430,6 +431,7 @@ async def find_accessible_facility_tool(
 
 
 @mcp.tool(
+    description=mcp_description("find_outdoor_service_tool"),
     annotations={
         **TOOL_ANNOTATIONS,
         "title": "Find ATM WiFi Or Vet Hospital",
@@ -448,7 +450,6 @@ async def find_outdoor_service_tool(
     Use `service=vet_hospital` for animal emergency. For mixed intents, use
     `emergency_guide_tool` to orchestrate multiple tools.
     """
-    _ = tool_description("Outdoor services including pets.", "find_outdoor_service_tool")
     effective_place, _ = await resolve_effective_place(
         place_query=place_query,
         user_request=user_request,
