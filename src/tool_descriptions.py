@@ -92,5 +92,11 @@ def tool_description(base: str, chain_key: str) -> str:
 
 
 def mcp_description(chain_key: str) -> str:
+    """PlayMCP 마켓·심사 UI용 — 한 줄 기능 설명만 노출."""
+    return TOOL_BASE_KO.get(chain_key, chain_key).strip()
+
+
+def agent_tool_guide(chain_key: str) -> str:
+    """에이전트 라우팅용 상세 가이드 (MCP description에는 넣지 않음)."""
     base = TOOL_BASE_KO.get(chain_key, chain_key)
     return tool_description(base, chain_key)
