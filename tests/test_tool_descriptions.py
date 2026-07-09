@@ -19,6 +19,7 @@ EXPECTED = {
     "find_outdoor_service_tool",
 }
 SERVICE_NAME = "모두의비상벨: 급할 때 필요한 생활 정보를 찾는 도우미"
+SERVICE_IDENTIFIER = f"modu-emergencybell({SERVICE_NAME})"
 
 
 def test_all_tools_have_description() -> None:
@@ -29,6 +30,8 @@ def test_all_tools_have_description() -> None:
         for t in tools:
             assert t.description and t.description.strip(), f"missing description: {t.name}"
             assert SERVICE_NAME in t.description, f"missing service name: {t.name}"
+            assert SERVICE_IDENTIFIER in t.description, f"missing service identifier: {t.name}"
+            assert not t.description.startswith(SERVICE_NAME), t.name
             assert "PARAMETERS:" not in t.description, t.name
             assert len(t.description) < 200, t.name
             for param_name, schema in t.inputSchema.get("properties", {}).items():
